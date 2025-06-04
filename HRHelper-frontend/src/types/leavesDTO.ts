@@ -1,4 +1,4 @@
-import type { EmployeeDetailResponse } from "./ProfilesDTO";
+import type { EmployeeDetailResponse } from "./profilesDTO";
 
 export interface LeaveResponse {
     id: number;

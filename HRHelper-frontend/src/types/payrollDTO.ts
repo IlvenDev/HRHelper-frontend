@@ -1,4 +1,4 @@
-import type { EmployeeBasicResponse } from "./ProfilesDTO";
+import type { EmployeeBasicResponse } from "./profilesDTO";
 
 export interface PaymentResponseBasic {
     id: number;
@@ -8,7 +8,7 @@ export interface PaymentResponseBasic {
     status: string; // Might want to ENUM this
 }
 
-export interface PaymentResponseDetails extends PaymentResponseBasic {
+export interface PaymentResponseDetail extends PaymentResponseBasic {
     dueDate: Date;
     paymentDate: Date;
     employeePaymentDetails: EmployeePaymentDetails;
@@ -26,6 +26,13 @@ export interface EmployeePaymentDetails {
 
 export interface DepartmentCosts {
     id: number;
+    department: string; // Might want to ENUM
+    date: Date;
+    amount: number;
+    costType: string; // Might want to ENUM
+}
+
+export interface DepartmentCostsRequest {
     department: string; // Might want to ENUM
     date: Date;
     amount: number;
