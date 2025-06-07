@@ -3,13 +3,13 @@ export interface EmployeeBasicResponse {
     name: string;
     lastname: string;
     email: string;
-}
-
-export interface EmployeeDetailResponse extends EmployeeBasicResponse {
     pesel: string;
     phone: string;
     dateOfBirth: Date;
     sex: string;
+}
+
+export interface EmployeeDetailResponse extends EmployeeBasicResponse {
     emergencyContact?: EmergencyContactResponse;
     jobDetails: EmployeeJobDetailsResponse;
     residenceDetails: EmployeeResidenceDetailsResponse;
@@ -51,4 +51,32 @@ export interface EmployeeRequest {
     email: string;
     dateOfBirth: Date;
     sex: string;
+    jobDetails: EmployeeJobDetailsRequest;
+    residenceDetails: EmployeeResidenceDetailsRequest;
+    emergencyContact: EmergencyContactRequest;
+}
+
+export interface EmployeeJobDetailsRequest {
+    jobTitle: string;
+    jobDescription: string;
+    department: string;
+    workLocation: string;
+    employmentType: string;
+    employmentDate: Date;
+    terminationDate?: Date;
+    directSupervisorId?: number;
+}
+
+export interface EmployeeResidenceDetailsRequest {
+    address: string;
+    city: string;
+    state: string;
+    zip: string;
+    country: string;
+}
+
+export interface EmergencyContactRequest {
+    name: string;
+    lastname: string;
+    phone: string;
 }
