@@ -14,3 +14,4 @@ export interface AttendanceTimeRequest {
     date: Date;
     employee: EmployeeDetailResponse;
 }
+

@@ -9,12 +9,12 @@ import {
     Grid,
   } from '@mui/material';
   import { useEffect, useState } from 'react';
-import { createEmployee, getEmployeeDetail } from '../../services/profilesService';
+import {getEmployeeDetail, updateEmployee } from '../../services/profilesService';
 import type { EmployeeRequest } from '../../types/profilesDTO';
 import { useParams } from 'react-router-dom';
   
 const EmployeeEdit = () => {
-    const {id} = useParams();
+  const {id} = useParams();
   const [formData, setFormData] = useState({
     name: "",
     lastname: "",
@@ -129,7 +129,7 @@ const EmployeeEdit = () => {
           emergencyContact: formData.emergencyContact
         }
 
-        createEmployee(payload);
+        updateEmployee(Number(id) ,payload);
       };
     
       // Add validation

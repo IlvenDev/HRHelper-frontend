@@ -1,3 +1,4 @@
+import type { CostType, PaymentStatus } from "../enums/enums";
 import type { EmployeeBasicResponse } from "./profilesDTO";
 
 export interface PaymentResponseBasic {
@@ -26,12 +27,12 @@ export interface EmployeePaymentDetails {
 
 export interface DepartmentCosts {
     id: number;
-    department: string; // Might want to ENUM
+    department: string;
     date: Date;
     amount: number;
-    costType: string; // Might want to ENUM
-}
-
+    costType: CostType;
+  }
+  
 export interface DepartmentCostsRequest {
     department: string; // Might want to ENUM
     date: Date;
@@ -40,11 +41,10 @@ export interface DepartmentCostsRequest {
 }
 
 export interface PaymentRequest {
-    id: number;
     bankAccountNumber: string;
     amount: number;
     currency: string;
-    status: string; // Might want to ENUM this
+    status: PaymentStatus; // Might want to ENUM this
     dueDate: Date;
     paymentDate: Date;
 }

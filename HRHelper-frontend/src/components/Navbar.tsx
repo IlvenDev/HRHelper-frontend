@@ -16,13 +16,16 @@ const Navbar = () => {
           <Button color="inherit" component={RouterLink} to="/employees">
             Profiles
           </Button>
-          <Button color="inherit">
-            Payroll
+          <Button color="inherit" component={RouterLink} to="/costs">
+            Costs
           </Button>
-          <Button color="inherit">
+          <Button color="inherit" component={RouterLink} to="/payments">
+            Payments
+          </Button>
+          <Button color="inherit" component={RouterLink} to="/leaves">
             Leaves
           </Button>
-          <Button color="inherit">
+          <Button color="inherit" component={RouterLink} to="/attendance">
             Attendance
           </Button>
         </Toolbar>

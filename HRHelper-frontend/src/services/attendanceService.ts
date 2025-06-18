@@ -45,3 +45,10 @@ export const getAttendanceByEmployeeAndDateRange = async (employeeId: number,
             });
         return response.data;
     };
+
+export const getWorkedHoursInMonth = async (year: number, month: number): Promise<number> => {
+    const response = await api.get('/profiles/attendance/hours', {
+        params: { year, month }
+    });
+    return response.data;
+    };

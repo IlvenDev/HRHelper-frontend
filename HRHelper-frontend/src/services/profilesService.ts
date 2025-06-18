@@ -15,7 +15,7 @@ export const updateEmployee = async (employeeId: number, employee: EmployeeReque
 
 export const deleteEmployee = async (employeeId: number):
     Promise<String> => {
-        const response = await api.delete(`/profiles/${employeeId}/delete`);
+        const response = await api.delete(`/profiles/delete/${employeeId}`);
         return response.data;
     };
 
@@ -29,4 +29,16 @@ export const getEmployeeDetail = async (employeeId: number):
     Promise<EmployeeDetailResponse> => {
         const response = await api.get(`/profiles/${employeeId}`);
         return response.data;
+    };
+
+export const getAllEmployeesCount = async (): Promise<number> => {
+    const response = await api.get('/profiles/count');
+    return response.data;
+    };
+    
+    export const getNewEmployeesCount = async (year: number, month: number): Promise<number> => {
+    const response = await api.get('/profiles/count/new', {
+        params: { year, month }
+    });
+    return response.data;
     };

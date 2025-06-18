@@ -1,5 +1,5 @@
 import api from "../api/axios"
-import type { PaymentResponseBasic, PaymentResponseDetail } from "../types/payrollDTO";
+import type { PaymentRequest, PaymentResponseBasic, PaymentResponseDetail } from "../types/payrollDTO";
 
 export const requestPayment = async (data: PaymentRequest):
     Promise<PaymentResponse> => {
@@ -20,11 +20,11 @@ export const getPaymentById = async (paymentId: number):
     };
 
 export const getPaymentByParams = async (
-    startDate: Date,
-    endDate: Date,
-    bankAccountNumber: string,
-    status: string,
-    dueDate: Date ):
+    startDate: Date | undefined,
+    endDate: Date | undefined,
+    bankAccountNumber: string | undefined,
+    status: string | undefined,
+    dueDate: Date | undefined):
     Promise<PaymentResponseBasic[]> => {
         const response = await api.get('/payments/get', {
             params: {startDate, endDate, bankAccountNumber, status, dueDate}

@@ -15,7 +15,7 @@ export const changeStatus = async (leaveId: number, newStatus: string):
 
 export const getAllLeaves = async ():
     Promise<LeaveResponse[]> => {
-        const response = await api.get('/leaves');
+        const response = await api.get('/leaves/all');
         return response.data;
     };
 
@@ -29,4 +29,35 @@ export const getLeaveById = async (leaveId: number):
     Promise<LeaveResponse> => {
         const response = await api.get(`/leaves/${leaveId}`);
         return response.data;
+    };
+    
+export const getLeavesByParams = async (
+    date: Date | undefined,
+    leaveStatus: string | undefined,
+    leaveType: string | undefined,
+    employeeId: number | undefined
+    ): Promise<LeaveResponse[]> => {
+    const response = await api.get('/leaves/get', {
+        params: {
+        date,
+        leaveStatus,
+        leaveType,
+        employeeId
+        }
+    });
+    return response.data;
+    };
+
+export const getLeavesCountInMonth = async (year: number, month: number): Promise<number> => {
+    const response = await api.get('/profiles/leaves/count', {
+        params: { year, month }
+    });
+    return response.data;
+    };
+    
+export const getLeaveTypeDistributionInMonth = async (year: number, month: number): Promise<Record<string, number>> => {
+    const response = await api.get('/profiles/leaves/distribution', {
+        params: { year, month }
+    });
+    return response.data;
     };
