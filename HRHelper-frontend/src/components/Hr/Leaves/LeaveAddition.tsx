@@ -8,8 +8,8 @@ import {
     Typography,
   } from '@mui/material';
   import { useState } from 'react';
-  import { requestLeave } from '../../services/leavesService'; // Update path if needed
-import type { LeaveType } from '../../enums/enums';
+  import { requestLeave } from '../../../services/leavesService'; // Update path if needed
+import type { LeaveType } from '../../../enums/enums';
   
   const leaveTypes: LeaveType[] = ['SICK_LEAVE', 'PAID_TIME_OFF', 'UNPAID_TIME_OFF',];
   

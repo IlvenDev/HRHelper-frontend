@@ -18,9 +18,9 @@ import {
   import { useEffect, useState } from 'react';
   import { Link as RouterLink } from 'react-router-dom';
   import { Search } from '@mui/icons-material';
-  import type { PaymentResponseBasic } from '../../../types/payrollDTO';
-  import { getPaymentByParams } from '../../../services/paymentService';
-import type { PaymentStatus } from '../../../enums/enums';
+  import type { PaymentResponseBasic } from '../../../../types/payrollDTO';
+  import { getPaymentByParams } from '../../../../services/paymentService';
+import type { PaymentStatus } from '../../../../enums/enums';
 
 
   const statuses: PaymentStatus[] = [

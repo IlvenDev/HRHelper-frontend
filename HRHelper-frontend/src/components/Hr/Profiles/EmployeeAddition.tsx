@@ -8,13 +8,11 @@ import {
     Typography,
     Grid,
   } from '@mui/material';
-  import { useEffect, useState } from 'react';
-import {getEmployeeDetail, updateEmployee } from '../../services/profilesService';
-import type { EmployeeRequest } from '../../types/profilesDTO';
-import { useParams } from 'react-router-dom';
+  import { useState } from 'react';
+import { createEmployee } from '../../../services/profilesService';
+import type { EmployeeRequest } from '../../../types/profilesDTO';
   
-const EmployeeEdit = () => {
-  const {id} = useParams();
+const EmployeeAddition = () => {
   const [formData, setFormData] = useState({
     name: "",
     lastname: "",
@@ -38,7 +36,7 @@ const EmployeeEdit = () => {
       department: "",
       workLocation: "",
       employmentType: "",
-      employmentDate: new Date(),
+      employmentDate: "",
       terminationDate: new Date(),
       directSupervisorId: 0,
     },
@@ -50,47 +48,7 @@ const EmployeeEdit = () => {
     },
   });
     
-  useEffect(() => {
-    const load = async () => {
-      const emp = await getEmployeeDetail(Number(id));
-      setFormData({
-        name: emp.name,
-        lastname: emp.lastname,
-        email: emp.email,
-        phone: emp.phone,
-        pesel: emp.pesel,
-        sex: emp.sex,
-        dateOfBirth: emp.dateOfBirth ? new Date(emp.dateOfBirth).toISOString().slice(0, 10) : '',
-        residence: {
-          address: emp.residenceDetails?.address ?? '',
-          city: emp.residenceDetails?.city ?? '',
-          state: emp.residenceDetails?.state ?? '',
-          zip: emp.residenceDetails?.zip ?? '',
-          country: emp.residenceDetails?.country ?? '',
-        },
-        jobDetails: {
-          jobTitle: emp.jobDetails?.jobTitle ?? '',
-          jobDescription: emp.jobDetails?.jobDescription ?? '',
-          department: emp.jobDetails?.department ?? '',
-          workLocation: emp.jobDetails?.workLocation ?? '',
-          employmentType: emp.jobDetails?.employmentType ?? '',
-          employmentDate: emp.jobDetails.employmentDate,
-          directSupervisorId: emp.jobDetails?.directSupervisor?.id ?? '',
-          terminationDate: emp.jobDetails.terminationDate ?? new Date(),
-        },
-        emergencyContact: {
-          name: emp.emergencyContact?.name ?? '',
-          lastname: emp.emergencyContact?.lastname ?? '',
-          phone: emp.emergencyContact?.phone ?? '',
-        },
-      });
-    };
-
-    // TODO: Fix directSupervisorId edit not working
-  
-    if (id) load();
-  }, [id]);
-  
+      // Fix this and add it to each grid
 
       const handleChange = (section: keyof typeof formData | null, field: string) => 
         (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +87,7 @@ const EmployeeEdit = () => {
           emergencyContact: formData.emergencyContact
         }
 
-        updateEmployee(Number(id) ,payload);
+        createEmployee(payload);
       };
     
       // Add validation
@@ -253,4 +211,4 @@ const EmployeeEdit = () => {
       );
     };
 
-export default EmployeeEdit;
+export default EmployeeAddition;

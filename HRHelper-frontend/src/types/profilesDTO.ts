@@ -7,6 +7,15 @@ export interface EmployeeBasicResponse {
     phone: string;
     dateOfBirth: Date;
     sex: string;
+    role: string;
+    dataZatrudnienia: Date;
+    dataZwolnienia: Date; 
+    stawka: number;
+    wymiarPracy: string;
+    rodzajRozliczenia: string;
+    staż: number;
+    dostępneDniUrlopu: number;
+    wykorzystaneDniUrlopu: number;
 }
 
 export interface EmployeeDetailResponse extends EmployeeBasicResponse {

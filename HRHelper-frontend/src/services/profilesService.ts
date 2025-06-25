@@ -25,6 +25,12 @@ export const getEmployeeList = async ():
         return response.data;
     }
 
+export const getById = async (employeeId: number): 
+    Promise<EmployeeBasicResponse> => {
+        const response = await api.get(`/profiles/${employeeId}`);
+        return response.data;
+    }
+
 export const getEmployeeDetail = async (employeeId: number):
     Promise<EmployeeDetailResponse> => {
         const response = await api.get(`/profiles/${employeeId}`);

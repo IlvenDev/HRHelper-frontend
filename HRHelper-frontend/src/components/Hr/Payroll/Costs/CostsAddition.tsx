@@ -8,8 +8,8 @@ import {
     MenuItem,
   } from '@mui/material';
   import { useState } from 'react';
-import type { DepartmentCosts } from '../../../types/payrollDTO';
-import { addCosts } from '../../../services/departmentCostsService';
+import type { DepartmentCosts } from '../../../../types/payrollDTO';
+import { addCosts } from '../../../../services/departmentCostsService';
   
   // --- ENUMS / Types ---
   export type Department = "IT" | "SALES" | "HR" | "RND";

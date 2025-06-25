@@ -14,19 +14,13 @@ const Navbar = () => {
             Dashboard
           </Button>
           <Button color="inherit" component={RouterLink} to="/employees">
-            Profiles
-          </Button>
-          <Button color="inherit" component={RouterLink} to="/costs">
-            Costs
-          </Button>
-          <Button color="inherit" component={RouterLink} to="/payments">
-            Payments
+            Pracownicy
           </Button>
           <Button color="inherit" component={RouterLink} to="/leaves">
-            Leaves
+            Urlopy
           </Button>
           <Button color="inherit" component={RouterLink} to="/attendance">
-            Attendance
+            Obecność
           </Button>
         </Toolbar>
       </AppBar>

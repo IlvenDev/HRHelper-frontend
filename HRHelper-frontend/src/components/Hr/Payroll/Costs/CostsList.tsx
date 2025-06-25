@@ -17,9 +17,9 @@ import {
 import SearchIcon from "@mui/icons-material/Search";
 
 import { Link as RouterLink } from "react-router-dom";
-import type { DepartmentCosts } from "../../../types/payrollDTO";
-import { getCostsByParams } from "../../../services/departmentCostsService";
-import type { CostType } from "../../../enums/enums";
+import type { DepartmentCosts } from "../../../../types/payrollDTO";
+import { getCostsByParams } from "../../../../services/departmentCostsService";
+import type { CostType } from "../../../../enums/enums";
 
 const CostsList = () => {
   const [costs, setCosts] = useState<DepartmentCosts[]>([]);

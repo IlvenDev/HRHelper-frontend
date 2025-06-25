@@ -8,9 +8,9 @@ import {
     MenuItem,
   } from '@mui/material';
   import { useState } from 'react';
-import type { PaymentStatus } from '../../../enums/enums';
-import { requestPayment } from '../../../services/paymentService';
-import type { PaymentRequest } from '../../../types/payrollDTO';
+import type { PaymentStatus } from '../../../../enums/enums';
+import { requestPayment } from '../../../../services/paymentService';
+import type { PaymentRequest } from '../../../../types/payrollDTO';
   
   const PaymentsAddition = () => {
     const [formData, setFormData] = useState<{

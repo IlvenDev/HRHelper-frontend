@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import type { EmployeeDetailResponse } from '../../types/profilesDTO';
+import type { EmployeeDetailResponse } from '../../../types/profilesDTO';
 import {
   Box,
   CircularProgress,
@@ -9,7 +9,7 @@ import {
   Grid,
   Button,
 } from '@mui/material';
-import { deleteEmployee, getEmployeeDetail } from '../../services/profilesService';
+import { deleteEmployee, getEmployeeDetail } from '../../../services/profilesService';
 
 const labelStyle = {
   fontWeight: '600',

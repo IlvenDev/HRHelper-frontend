@@ -1,5 +1,5 @@
 import api from '../api/axios';
-import type { AttendanceTimeRequest, AttendanceTimeResponse } from '../types/attendanceDTO';
+import type { AttendanceEditRequest, AttendanceTimeRequest, AttendanceTimeResponse } from '../types/attendanceDTO';
 
 export const initializeAttendance = async (data: AttendanceTimeRequest): 
     Promise<AttendanceTimeResponse> => {
@@ -7,13 +7,21 @@ export const initializeAttendance = async (data: AttendanceTimeRequest):
         return response.data;
     };
 
-export const finalizeAttendance = async (id: number, endTime: string): 
+export const finalizeAttendance = async (id: number, endTime: string, breakTaken: boolean): 
     Promise<AttendanceTimeResponse> => {
-        const response = await api.put(`/attendance/finalize/${id}`, null, {
-        params: { endTime },
+        const response = await api.patch(`/attendance/finalize/${id}`, null, {
+        params: { endTime, breakTaken },
     });
     return response.data;
 };
+
+export const editAttendance = async (
+    id: number,
+    payload: AttendanceEditRequest
+  ): Promise<AttendanceTimeResponse> => {
+    const response = await api.patch(`/attendance/edit/${id}`, payload);
+    return response.data;
+  };
     
 export const getAllAttendance = async (): 
     Promise<AttendanceTimeResponse[]> => {
@@ -28,7 +36,7 @@ export const getAttendanceByEmployee = async (employeeId: number):
     }
 
 
-export const getAttendanceByDateRange = async (startDate: Date, endDate: Date):
+export const getAttendanceByDateRange = async (startDate: string, endDate: string):
     Promise<AttendanceTimeResponse[]> => {
         const response = await api.get('/attendance/date', {
             params: {startDate, endDate},
@@ -36,9 +44,10 @@ export const getAttendanceByDateRange = async (startDate: Date, endDate: Date):
         return response.data;
     };
 
+
 export const getAttendanceByEmployeeAndDateRange = async (employeeId: number, 
-    startDate: number, 
-    endDate: number):
+    startDate: string, 
+    endDate: string):
         Promise<AttendanceTimeResponse[]> => {
             const response = await api.get('/attendance/employee', {
                 params: {employeeId, startDate, endDate},

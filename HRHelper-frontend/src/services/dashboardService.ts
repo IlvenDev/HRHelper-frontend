@@ -1,12 +1,12 @@
 import api from "../api/axios";
 
 // PROFILES
-export const fetchTotalEmployees = async (): Promise<number> => {
+export const getTotalEmployees = async (): Promise<number> => {
   const res = await api.get("/profiles/count");
   return res.data;
 };
 
-export const fetchNewEmployees = async (
+export const getNewEmployees = async (
   year: number,
   month: number
 ): Promise<number> => {
@@ -15,7 +15,7 @@ export const fetchNewEmployees = async (
 };
 
 // LEAVES
-export const fetchLeavesCount = async (
+export const getLeavesCount = async (
   year: number,
   month: number
 ): Promise<number> => {
@@ -23,7 +23,7 @@ export const fetchLeavesCount = async (
   return res.data;
 };
 
-export const fetchLeaveDistribution = async (
+export const getLeaveDistribution = async (
   year: number,
   month: number
 ): Promise<{ [key: string]: number }> => {
@@ -34,7 +34,7 @@ export const fetchLeaveDistribution = async (
 };
 
 // ATTENDANCE
-export const fetchTotalHoursWorked = async (
+export const getTotalHoursWorked = async (
   year: number,
   month: number
 ): Promise<number> => {
@@ -43,7 +43,7 @@ export const fetchTotalHoursWorked = async (
 };
 
 // COSTS
-export const fetchCostTotal = async (
+export const getCostTotal = async (
   year: number,
   month: number
 ): Promise<number> => {
@@ -51,7 +51,7 @@ export const fetchCostTotal = async (
   return res.data;
 };
 
-export const fetchCostDistribution = async (
+export const getCostDistribution = async (
   year: number,
   month: number
 ): Promise<{ [key: string]: number }> => {
@@ -68,7 +68,7 @@ export type DepartmentSummary = {
   totalCost: number;
 };
 
-// export const fetchDepartments = async (): Promise<DepartmentSummary[]> => {
+// export const getDepartments = async (): Promise<DepartmentSummary[]> => {
 //   const res = await api.get("/departments/summary");
 //   return res.data;
 // };

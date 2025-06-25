@@ -1,15 +1,18 @@
-import type { EmployeeDetailResponse } from "./profilesDTO";
+import type { EmployeeBasicResponse, EmployeeDetailResponse } from "./profilesDTO";
 
 export interface LeaveResponse {
-    id: number;
-    date: Date;
-    leaveType: string; // might enum
-    leaveStatus: string; // might enum
-    employee: EmployeeDetailResponse
+    id: number,
+    dataStart: Date;
+    dataKoniec: Date;
+    rodzaj: string;
+    status: string;
+    złożono: Date;
+    employee: EmployeeBasicResponse;
 }
 
 export interface LeaveRequest {
-    date: Date;
-    leaveType: string;
+    dataStart: Date;
+    dataKoniec: Date;
+    rodzaj: string;
     employeeId: number;
 }
