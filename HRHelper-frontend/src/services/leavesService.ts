@@ -9,7 +9,9 @@ export const requestLeave = async (data: LeaveRequest):
 
 export const changeStatus = async (leaveId: number, newStatus: string):
     Promise<String> => {
-        const response = await api.put(`/leaves/${leaveId}`, newStatus);
+        const response = await api.patch(`/leaves/change/${leaveId}`, null, {
+            params: {newStatus}
+        });
         return response.data;
     };
 
@@ -32,14 +34,16 @@ export const getLeaveById = async (leaveId: number):
     };
     
 export const getLeavesByParams = async (
-    date: Date | undefined,
+    dateStart: Date | undefined,
+    dateEnd: Date | undefined,
     leaveStatus: string | undefined,
     leaveType: string | undefined,
     employeeId: number | undefined
     ): Promise<LeaveResponse[]> => {
     const response = await api.get('/leaves/get', {
         params: {
-        date,
+        dateStart,
+        dateEnd,
         leaveStatus,
         leaveType,
         employeeId

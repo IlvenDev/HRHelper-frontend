@@ -13,6 +13,12 @@ export const updateEmployee = async (employeeId: number, employee: EmployeeReque
         return response.data;
     };
 
+export const updateLeaveDays = async (employeeId: number, leaveDays: Partial<EmployeeRequest>):
+    Promise<String> => {
+        const response = await api.patch(`/profiles/${employeeId}/leave-days`, leaveDays)
+        return response.data;
+    }
+
 export const deleteEmployee = async (employeeId: number):
     Promise<String> => {
         const response = await api.delete(`/profiles/delete/${employeeId}`);

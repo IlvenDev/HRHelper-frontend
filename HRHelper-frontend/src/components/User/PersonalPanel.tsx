@@ -16,34 +16,25 @@ import {
   TablePagination,
   TableContainer,
   Chip,
+  TextField,
+  MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import type { EmployeeBasicResponse } from "../../types/profilesDTO";
 import { getById } from "../../services/profilesService";
-import { getEmployeeLeaves } from "../../services/leavesService";
+import { getEmployeeLeaves, requestLeave } from "../../services/leavesService";
 import type { LeaveResponse } from "../../types/leavesDTO";
 import { finalizeAttendance, initializeAttendance } from "../../services/attendanceService";
 import type { AttendanceTimeRequest } from "../../types/attendanceDTO";
-import { data } from "react-router-dom";
-
-
-
-const activeLeaves = [
-    { id: 1, employee: "Anna", from: "2025-06-01", to: "2025-06-05", status: "Aktywny" },
-    { id: 2, employee: "Marek", from: "2025-06-10", to: "2025-06-15", status: "Aktywny" },
-    // ... więcej
-  ];
-  
-  const oldLeaves = [
-    { id: 101, employee: "Kasia", from: "2024-12-01", to: "2024-12-10", status: "Zakończony" },
-    { id: 102, employee: "Paweł", from: "2024-11-05", to: "2024-11-10", status: "Zakończony" },
-    // ... więcej
-  ];
+import { DatePicker } from "@mui/x-date-pickers";
+import dayjs from "dayjs";
 
 const PersonalPanel = () => {
   const [loading, setLoading] = useState(true);
-
- 
-  const [employeeData, setEmployeeData] = useState<EmployeeBasicResponse | undefined>();
+  const [employeeData, setEmployeeData] = useState<EmployeeBasicResponse>();
 
   async function loadEmployee() {
       const employee = await getById(Number(localStorage.getItem("employeeId")))
@@ -59,6 +50,15 @@ const PersonalPanel = () => {
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [timeInSeconds, setTimeInSeconds] = useState(0);
   const [breakTaken, setBreakTaken] = useState(false);
+  const [activeLeaves, setActiveLeaves] = useState<LeaveResponse[]>([]);
+  const [oldLeaves, setOldLeaves] = useState<LeaveResponse[]>([]);
+
+  const [editValues, setEditValues] = useState<{
+    date: Date,
+    startTime: string;
+    endTime: string;
+    przerwa: boolean;
+  } | null>(null);
 
   useEffect(() => {
     let interval: any;
@@ -91,24 +91,25 @@ const PersonalPanel = () => {
     setIsOnBreak(false);
     setBreakTaken(false);
     setTimeInSeconds(0);
-
+  
     const now = new Date();
-    const today = new Date(now.toISOString().split("T")[0])
-    const time = now.toTimeString().split(' ')[0]
-
+    const today = now.toLocaleDateString("en-CA");
+    const time = now.toTimeString().split(" ")[0]; // HH:mm:ss
+  
     const payload: AttendanceTimeRequest = {
-        employeeId: Number(localStorage.getItem("employeeId")),
-        date: today,
-        startTime: time,
-    }
-
+      employeeId: Number(localStorage.getItem("employeeId")),
+      date: today,
+      startTime: time,
+    };
+  
     try {
-        const response = await initializeAttendance(payload);
-        setAttendanceId(response.id)
+      const response = await initializeAttendance(payload);
+      setAttendanceId(response.id);
     } catch (err) {
-        console.error(err)
+      console.error(err);
     }
   };
+  
   
   const handleStop = async () => {
     setIsWorking(false);
@@ -164,13 +165,60 @@ const PersonalPanel = () => {
   const [employeeLeaves, setEmployeeLeaves] = useState<LeaveResponse[] | undefined>();
 
   async function loadLeaves() {
-    const response = await getEmployeeLeaves(Number(localStorage.getItem("employeeId")))
-    setEmployeeLeaves(response)
-  }
+  const response = await getEmployeeLeaves(Number(localStorage.getItem("employeeId")));
+  setEmployeeLeaves(response);
+  setOldLeaves(response.filter(leave => leave.status !== "OCZEKUJĄCE"));
+  setActiveLeaves(response.filter(leave => leave.status === "OCZEKUJĄCE"));
+}
+
 
   useEffect(() => {
     loadLeaves();
   }, [])
+
+  const [openLeaveDialog, setOpenLeaveDialog] = useState(false);
+
+  const [newLeaveData, setNewLeaveData] = useState({
+    type: "",
+    startDate: null as Date | null,
+    endDate: null as Date | null,
+    reason: "",
+  });
+
+  const handleOpenLeaveDialog = () => {
+    setOpenLeaveDialog(true);
+  };
+
+  const handleCloseLeaveDialog = () => {
+    setOpenLeaveDialog(false);
+    setNewLeaveData({ type: "", startDate: null, endDate: null, reason: "" });
+  };
+
+  const handleSubmitLeaveRequest = async () => {
+    // Tu dodaj wywołanie API do wysłania prośby urlopowej (np. leaveService.submitLeaveRequest)
+    try {
+      // Przykladowy payload - dopasuj do API
+      const payload = {
+        employeeId: Number(localStorage.getItem("employeeId")),
+        rodzaj: newLeaveData.type,
+        dataStart: newLeaveData.startDate?.toISOString().slice(0, 10),
+        dataKoniec: newLeaveData.endDate?.toISOString().slice(0, 10),
+        // powod: newLeaveData.reason,
+      };
+
+      await requestLeave(payload);
+
+      console.log("Submit leave request payload:", payload);
+
+      handleCloseLeaveDialog();
+
+      // Po wysłaniu możesz odświeżyć listę urlopów
+      await loadLeaves();
+
+    } catch (error) {
+      console.error("Błąd przy wysyłaniu prośby o urlop", error);
+    }
+  };
 
   if (loading) {
     return (
@@ -180,6 +228,8 @@ const PersonalPanel = () => {
     );
   }
 
+  
+
 // Przyciski do rozpoczęcia z licznikiem czasu + przycisk do zejścia na przerwe + "Wpisz stare godziny"
 // Dane pracownika (te z listy) + możliwość edycji
 // Lista aktywnych próśb o urlop i historia urlopów
@@ -187,59 +237,131 @@ const PersonalPanel = () => {
 
   return (
     <Box sx={{width: '100rem', mx: '29rem', mt: '3rem' }}>
-      <Typography variant="h4" gutterBottom fontWeight={600}>
-        
-      </Typography>
-
       <Grid container >
         {/* Obecni pracownicy */}
         <Grid size={7}>
           <Stack spacing={2}>
             <Paper sx={{ p: 3, minHeight: "16rem" }}>
-                <Typography variant="h5" gutterBottom>
-                    Moduł pracy
-                </Typography>
-
                 <Box mt={2}>
-                    <Typography variant="h4">Czas pracy: {formatTime(timeInSeconds)}</Typography>
-                    {isOnBreak && (
-                    <Typography variant="h6" color="warning.main" mt={1}>
-                        Przerwa aktywna
-                    </Typography>
-                    )}
+                    <Stack direction={"row"} spacing={6}>
+                      {!isWorking && (
+                      <Button variant="contained" onClick={handleStart}>
+                          Rozpocznij pracę
+                      </Button>
+                      )}
+
+                      {isWorking && (
+                      <>
+                          <Button
+                          variant="outlined"
+                          color={isOnBreak ? "success" : "warning"}
+                          onClick={handleBreakToggle}
+                          disabled={breakTaken && !isOnBreak} // zablokuj jeśli przerwa już była i użytkownik nie jest obecnie na niej
+                          >
+                          {isOnBreak ? "Wróć do pracy" : "Przerwa"}
+                          </Button>
+                          <Button variant="contained" color="error" onClick={handleStop}>
+                          Zakończ
+                          </Button>
+                      </>
+                      )}
+                      <Typography variant="h4">Czas pracy: {formatTime(timeInSeconds)}</Typography>
+                    </Stack>
+                      {/* <Typography variant="h4">Czas pracy: {formatTime(timeInSeconds)}</Typography> */}
+                      {isOnBreak && (
+                      <Typography variant="h6" color="warning.main" mt={1}>
+                          Przerwa aktywna
+                      </Typography>
+                      )}
                 </Box>
-
-                <Stack direction="row" spacing={2} mt={3}>
-                    {!isWorking && (
-                    <Button variant="contained" onClick={handleStart}>
-                        Rozpocznij pracę
-                    </Button>
-                    )}
-
-                    {isWorking && (
-                    <>
-                        <Button
-                        variant="outlined"
-                        color={isOnBreak ? "success" : "warning"}
-                        onClick={handleBreakToggle}
-                        disabled={breakTaken && !isOnBreak} // zablokuj jeśli przerwa już była i użytkownik nie jest obecnie na niej
-                        >
-                        {isOnBreak ? "Wróć do pracy" : "Przerwa"}
-                        </Button>
-                        <Button variant="contained" color="error" onClick={handleStop}>
-                        Zakończ
-                        </Button>
-                    </>
-                    )}
-                </Stack>
-                <Button
+                
+                <TableContainer component={Paper} sx={{mt: 2, minHeight: "100px"}}>
+                  <Typography variant="h6">Wpisz brakujące obecności</Typography>
+                  <Table>
+                    <TableHead>
+                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                        <TableCell sx={{ fontWeight: "bold" }}>Data</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Rozpoczęcie</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Zakończenie</TableCell>
+                        {/* <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell> */}
+                        <TableCell sx={{ fontWeight: "bold" }}>Przerwa</TableCell>
+                        <TableCell sx={{ fontWeight: "bold" }}>Akcje</TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                    <TableRow>
+                        <TableCell>
+                          <DatePicker
+                            format="YYYY-MM-DD"
+                            value={dayjs(editValues?.date)}
+                            onChange={(newValue) => {
+                              if (newValue) {
+                                setEditValues((prev) => ({ ...prev!, date: newValue.toDate() }));
+                              }
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField 
+                            variant="standard"
+                            value={editValues?.startTime}
+                            onChange={(e) => setEditValues((prev) => ({ ...prev!, startTime: e.target.value }))}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <TextField 
+                            variant="standard"
+                            value={editValues?.endTime}
+                            onChange={(e) => setEditValues((prev) => ({ ...prev!, endTime: e.target.value }))}
+                          />
+                          </TableCell>
+                        <TableCell>
+                          <TextField 
+                            select
+                            variant="standard"
+                            onChange={(e) =>
+                              setEditValues((prev) => ({
+                                ...prev!,
+                                przerwa: Boolean(e.target.value),
+                              }))
+                            }
+                          >
+                            <MenuItem value="true">Tak</MenuItem>
+                            <MenuItem value="false">Nie</MenuItem>
+                          </TextField>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                          color="primary"
+                          label={"Wypełnij"}
+                          clickable
+                          onClick={async () => {
+                            try {
+                              const updatedData: AttendanceTimeRequest = {
+                                date: editValues?.date,
+                                startTime: editValues?.startTime,
+                                endTime: editValues?.endTime,
+                                breakTaken: editValues?.przerwa,
+                              };
+  
+                              await initializeAttendance(updatedData);
+                            } catch (err) {
+                              console.error(err)
+                          }}}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    </TableBody>
+                  </Table>
+                </TableContainer>
+                {/* <Button
                     variant="text"
                     color="secondary"
                     sx={{ mt: 4 }}
                     onClick={() => alert("Tu będzie wpisywanie starych godzin")}
                 >
                     Wpisz stare godziny
-                </Button>
+                </Button> */}
             </Paper>
             <Paper sx={{ p: 3, maxHeight: "12rem", overflow: "auto"}}>
                     <Table size="small">
@@ -269,9 +391,113 @@ const PersonalPanel = () => {
                     </Table>
                 </Paper>
                 <Paper sx={{ p: 3, minHeight: "18rem" }}>
-                <Typography variant="h6" gutterBottom>
-                    Aktywne prośby o urlop
-                </Typography>
+                  <Stack direction={"row"} spacing={2} mb={2}>
+                  <Typography variant="h6" gutterBottom>
+                      Aktywne prośby o urlop
+                  </Typography>
+                  <Chip 
+                      color="primary"
+                      label={"Złóż prośbę"}
+                      clickable
+                      onClick={handleOpenLeaveDialog}
+                      />
+                  </Stack>
+                  <Dialog
+                  open={openLeaveDialog}
+                  onClose={handleCloseLeaveDialog}
+                  fullWidth
+                  maxWidth="sm"
+                  >
+                    <DialogTitle>Złóż prośbę o urlop</DialogTitle>
+                    <DialogContent>
+                      <TextField
+                        select
+                        label="Typ urlopu"
+                        fullWidth
+                        margin="normal"
+                        value={newLeaveData.type}
+                        onChange={(e) =>
+                          setNewLeaveData((prev) => ({ ...prev, type: e.target.value }))
+                        }
+                      >
+                        <MenuItem value="all">All</MenuItem>
+                        <MenuItem value="WYPOCZYNKOWY">Wypoczynkowy</MenuItem>
+                        <MenuItem value="CHOROBOWY">Chorobowy</MenuItem>
+                        <MenuItem value="OKOLICZNOŚCIOWY">Okolicznościowy</MenuItem>
+                        <MenuItem value="SZKOLENIOWY">Szkoleniowy</MenuItem>
+                        <MenuItem value="BEZPŁATNY">Bezpłatny</MenuItem>
+                        <MenuItem value="WYCHOWAWCZY">Wychowawczy</MenuItem>
+                        <MenuItem value="MACIERZYŃSKI">Macierzyński</MenuItem>
+                        <MenuItem value="NA_POSZUKIWANIE_PRACY">Na poszukiwanie pracy</MenuItem>
+                        <MenuItem value="ODDANIE_KRWI">Oddanie krwi</MenuItem>
+                        <MenuItem value="SIŁA_WYŻSZA">Siła wyższa</MenuItem>
+                        <MenuItem value="OPIEKUŃCZY">Opiekuńczy</MenuItem>
+                      </TextField>
+
+                      <DatePicker
+                        label="Data rozpoczęcia"
+                        value={newLeaveData.startDate ? dayjs(newLeaveData.startDate) : null}
+                        onChange={(date) =>
+                          setNewLeaveData((prev) => ({
+                            ...prev,
+                            startDate: date ? date.toDate() : null,
+                          }))
+                        }
+                        slotProps={{
+                          textField: { variant: "standard" }
+                        }}
+                      />
+
+                      <DatePicker
+                        label="Data zakończenia"
+                        value={newLeaveData.endDate ? dayjs(newLeaveData.endDate) : null}
+                        onChange={(date) =>
+                          setNewLeaveData((prev) => ({
+                            ...prev,
+                            endDate: date ? date.toDate() : null,
+                          }))
+                        }
+                        slotProps={{
+                          textField: { variant: "standard" }
+                        }}
+                      />
+
+                      {/* <TextField
+                        label="Powód (opcjonalnie)"
+                        multiline
+                        rows={3}
+                        fullWidth
+                        margin="normal"
+                        value={newLeaveData.reason}
+                        onChange={(e) =>
+                          setNewLeaveData((prev) => ({ ...prev, reason: e.target.value }))
+                        }
+                      /> */}
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={handleCloseLeaveDialog}>Anuluj</Button>
+                      <Button
+                        variant="contained"
+                        onClick={handleSubmitLeaveRequest}
+                        disabled={
+                          !newLeaveData.type ||
+                          !newLeaveData.startDate ||
+                          !newLeaveData.endDate ||
+                          (newLeaveData.startDate > newLeaveData.endDate)
+                        }
+                      >
+                        Wyślij
+                      </Button>
+                    </DialogActions>
+                  </Dialog>
+                <Stack direction={"row"} spacing={2}>
+                    <Typography>
+                      {"Dostępne dni urlopu: " +  employeeData?.dostępneDniUrlopu || ""}
+                    </Typography>
+                    <Typography>
+                      {"Użyte dni urlopu: " +  employeeData?.wykorzystaneDniUrlopu || ""}
+                    </Typography>
+                </Stack>
                 <TableContainer>
                     <Table size="small" aria-label="active leaves table">
                     <TableHead>
@@ -286,7 +512,7 @@ const PersonalPanel = () => {
                         .map((leave) => (
                             <TableRow key={leave.id}>
                             <TableCell>{new Date(leave.dataStart).toLocaleDateString()}-{new Date(leave.dataKoniec).toLocaleDateString()}</TableCell>
-                            <TableCell>{leave.rodzaj}</TableCell>
+                            <TableCell>{leave.rodzaj.replace(/_/g, " ")}</TableCell>
                             <TableCell>
                                 <Chip
                                 label={leave.status}
@@ -300,7 +526,7 @@ const PersonalPanel = () => {
                     </Table>
                     <TablePagination
                     component="div"
-                    count={activeLeaves.length}
+                    count={activeLeaves.length ?? 5}
                     page={pageActive}
                     onPageChange={handleChangePageActive}
                     rowsPerPage={rowsPerPageActive}
@@ -310,10 +536,11 @@ const PersonalPanel = () => {
                 </TableContainer>
 
                 <Divider sx={{ my: 3 }} />
-
-                <Typography variant="h6" gutterBottom>
-                    Stare prośby o urlop
-                </Typography>
+                <Stack direction={"row"} spacing={2}>
+                  <Typography variant="h6" gutterBottom>
+                      Stare prośby o urlop
+                  </Typography>
+                </Stack>
                 <TableContainer>
                     <Table size="small" aria-label="active leaves table">
                     <TableHead>
@@ -328,7 +555,7 @@ const PersonalPanel = () => {
                         .map((leave) => (
                             <TableRow key={leave.id}>
                             <TableCell>{new Date(leave.dataStart).toLocaleDateString()}-{new Date(leave.dataKoniec).toLocaleDateString()}</TableCell>
-                            <TableCell>{leave.rodzaj}</TableCell>
+                            <TableCell>{leave.rodzaj.replace(/_/g, " ")}</TableCell>
                             <TableCell>
                                 <Chip
                                 label={leave.status}
@@ -342,7 +569,7 @@ const PersonalPanel = () => {
                     </Table>
                     <TablePagination
                     component="div"
-                    count={activeLeaves.length}
+                    count={oldLeaves.length ?? 5}
                     page={pageActive}
                     onPageChange={handleChangePageActive}
                     rowsPerPage={rowsPerPageActive}

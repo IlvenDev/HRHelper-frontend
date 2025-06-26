@@ -23,20 +23,13 @@ import {
 } from "@mui/material";
 import { PieChart } from "@mui/x-charts/PieChart";
 import { ExpandLess, ExpandMore} from "@mui/icons-material";
-
-type PresentEmployee = {
-  id: number;
-  name: string;
-  status: string;
-  startTime: string;
-};
-
-type LeaveRequest = {
-  id: number;
-  employee: string;
-  type: string;
-  submittedAt: string;
-};
+import type { AttendanceTimeResponse } from "../types/attendanceDTO";
+import { getMissingAttendance, getTodayAttendance } from "../services/attendanceService";
+import type { EmployeeBasicResponse } from "../types/profilesDTO";
+import { getMonthlySummary } from "../services/dashboardService";
+import { getLeavesByParams } from "../services/leavesService";
+import dayjs from "dayjs";
+import type { LeaveResponse } from "../types/leavesDTO";
 
 type HoursSummary = {
   regular: number;
@@ -56,13 +49,6 @@ type HoursSummary = {
   sickLeave: number;
 };
 
-type Absence = {
-  id: number;
-  employee: string;
-  daysAbsent: number;
-  excused: boolean;
-};
-
 const EMPLOYEES_PER_PAGE = 6;
 const ABSENCES_PER_PAGE = 5;
 const LEAVES_PER_PAGE = 5;
@@ -75,26 +61,10 @@ const Dashboard = () => {
   const [freeLeavesOpen, setFreeLeavesOpen] = useState(false);
   const [specialLeavesOpen, setSpecialLeavesOpen] = useState(false);
 
-  const [presentEmployees, setPresentEmployees] = useState<PresentEmployee[]>([]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
-  const [hoursSummary, setHoursSummary] = useState<HoursSummary>({
-    regular: 0,
-    overtimeDay: 0,
-    overtimeNight: 0,
-    overtimeHoliday: 0,
-    leaveVacation: 0,
-    leaveUnpaid: 0,
-    leaveCircumstance: 0,
-    leavePregnant: 0,
-    leaveParental: 0,
-    leaveTraining: 0,
-    leaveHigherPower: 0,
-    leaveJobSearch: 0,
-    leaveBlood: 0,
-    leaveCarer: 0,
-    sickLeave: 0,
-  });
-  const [absences, setAbsences] = useState<Absence[]>([]);
+  const [presentEmployees, setPresentEmployees] = useState<AttendanceTimeResponse[]>([]);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveResponse[]>([]);
+
+  const [absences, setAbsences] = useState<EmployeeBasicResponse[]>([]);
 
   const [empPage, setEmpPage] = useState(1);
   const [absPage, setAbsPage] = useState(1);
@@ -116,102 +86,78 @@ const Dashboard = () => {
     setSpecialLeavesOpen(!specialLeavesOpen)
   }
 
-  useEffect(() => {
-    // MOCK DATA
-    setTimeout(() => {
-      setPresentEmployees([
-        { id: 1, name: "Anna Kowalska", status: "Obecny", startTime: "08:03" },
-        { id: 2, name: "Jan Nowak", status: "Obecny", startTime: "07:51" },
-        { id: 3, name: "Maria Wiśniewska", status: "Przerwa", startTime: "08:10" },
-        { id: 4, name: "Tomasz Zieliński", status: "Obecny", startTime: "08:05" },
-        { id: 5, name: "Katarzyna Mazur", status: "Przerwa", startTime: "07:58" },
-        { id: 6, name: "Piotr Wójcik", status: "Obecny", startTime: "08:00" },
-        { id: 7, name: "Agnieszka Kwiatkowska", status: "Obecny", startTime: "08:02" },
-        { id: 8, name: "Michał Lewandowski", status: "Przerwa", startTime: "07:55" },
-        { id: 9, name: "Ewa Kamińska", status: "Obecny", startTime: "08:07" },
-        { id: 10, name: "Andrzej Dąbrowski", status: "Obecny", startTime: "08:12" },
-        { id: 11, name: "Natalia Jabłońska", status: "Obecny", startTime: "08:04" },
-        { id: 12, name: "Grzegorz Pawlak", status: "Przerwa", startTime: "08:01" },
-        { id: 13, name: "Monika Król", status: "Obecny", startTime: "08:06" },
-        { id: 14, name: "Rafał Wieczorek", status: "Obecny", startTime: "07:59" },
-        { id: 15, name: "Paulina Nowicka", status: "Obecny", startTime: "08:08" },
-        { id: 16, name: "Damian Maj", status: "Przerwa", startTime: "07:57" },
-        { id: 17, name: "Karolina Olszewska", status: "Obecny", startTime: "08:09" },
-        { id: 18, name: "Bartłomiej Sikora", status: "Obecny", startTime: "08:00" },
-        { id: 19, name: "Joanna Walczak", status: "Obecny", startTime: "07:54" },
-        { id: 20, name: "Krzysztof Rutkowski", status: "Przerwa", startTime: "08:11" },
-        { id: 21, name: "Izabela Baran", status: "Obecny", startTime: "08:03" },
-        { id: 22, name: "Sebastian Tomaszewski", status: "Obecny", startTime: "08:05" },
-        { id: 23, name: "Zofia Górska", status: "Obecny", startTime: "08:06" },
-        { id: 24, name: "Marek Szymański", status: "Przerwa", startTime: "07:56" },
-        { id: 25, name: "Aleksandra Czarnecka", status: "Obecny", startTime: "08:01" },
-      ]);
-      
+  const loadPresentEmployees = async () => {
+      try {
+        const data = await getTodayAttendance();
+        setPresentEmployees(data);
+      } catch (err) {
+        console.error("Failed to fetch attendance:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-      setAbsences([
-        { id: 1, employee: "Anna Kowalska", daysAbsent: 3, excused: false },
-        { id: 2, employee: "Jan Nowak", daysAbsent: 1, excused: false },
-        { id: 3, employee: "Maria Wiśniewska", daysAbsent: 4, excused: false },
-        { id: 4, employee: "Tomasz Zieliński", daysAbsent: 5, excused: false },
-        { id: 5, employee: "Agnieszka Kwiatkowska", daysAbsent: 3, excused: false },
-        { id: 6, employee: "Piotr Wójcik", daysAbsent: 6, excused: false },
-        { id: 7, employee: "Michał Lewandowski", daysAbsent: 2, excused: false },
-        { id: 8, employee: "Ewa Kamińska", daysAbsent: 4, excused: false },
-        { id: 9, employee: "Andrzej Dąbrowski", daysAbsent: 3, excused: false },
-        { id: 10, employee: "Natalia Jabłońska", daysAbsent: 5, excused: false },
-        { id: 11, employee: "Grzegorz Pawlak", daysAbsent: 4, excused: false },
-        { id: 12, employee: "Monika Król", daysAbsent: 3, excused: false },
-        { id: 13, employee: "Paulina Nowicka", daysAbsent: 5, excused: false },
-        { id: 14, employee: "Damian Maj", daysAbsent: 3, excused: false },
-        { id: 15, employee: "Joanna Walczak", daysAbsent: 4, excused: true },
-        { id: 16, employee: "Krzysztof Malec", daysAbsent: 6, excused: false },
-        { id: 17, employee: "Zofia Górska", daysAbsent: 5, excused: true },
-        { id: 18, employee: "Sebastian Tomaszewski", daysAbsent: 7, excused: false },
-        { id: 19, employee: "Izabela Baran", daysAbsent: 4, excused: true },
-        { id: 20, employee: "Bartłomiej Sikora", daysAbsent: 3, excused: false },
-      ]);
-      
-      
-
-      setLeaveRequests([
-        { id: 1, employee: "Krzysztof Malec", type: "Wypoczynkowy", submittedAt: "2025-06-15" },
-        { id: 2, employee: "Ewa Zawadzka", type: "Opieka nad dzieckiem", submittedAt: "2025-06-16" },
-        { id: 3, employee: "Łukasz Kowalczyk", type: "Chorobowe", submittedAt: "2025-06-13" },
-        { id: 4, employee: "Karolina Olszewska", type: "Wypoczynkowy", submittedAt: "2025-06-14" },
-        { id: 5, employee: "Sebastian Tomaszewski", type: "Bezpłatny", submittedAt: "2025-06-12" },
-        { id: 6, employee: "Zofia Górska", type: "Opieka nad dzieckiem", submittedAt: "2025-06-17" },
-        { id: 7, employee: "Marek Szymański", type: "Chorobowe", submittedAt: "2025-06-11" },
-        { id: 8, employee: "Izabela Baran", type: "Wypoczynkowy", submittedAt: "2025-06-10" },
-        { id: 9, employee: "Aleksandra Czarnecka", type: "Macierzyński", submittedAt: "2025-06-09" },
-        { id: 10, employee: "Rafał Wieczorek", type: "Ojcowski", submittedAt: "2025-06-08" },
-        { id: 11, employee: "Bartłomiej Sikora", type: "Wypoczynkowy", submittedAt: "2025-06-07" },
-        { id: 12, employee: "Joanna Walczak", type: "Chorobowe", submittedAt: "2025-06-06" },
-        { id: 13, employee: "Grzegorz Pawlak", type: "Wypoczynkowy", submittedAt: "2025-06-05" },
-        { id: 14, employee: "Paulina Nowicka", type: "Opieka nad dzieckiem", submittedAt: "2025-06-04" },
-        { id: 15, employee: "Damian Maj", type: "Bezpłatny", submittedAt: "2025-06-03" },
-      ]);
-      
-
-      setHoursSummary({
-        regular: 602,
-        overtimeDay: 123,
-        overtimeNight: 52,
-        overtimeHoliday: 12,
-        leaveVacation: 64,
-        leaveUnpaid: 4,
-        leaveCircumstance: 8,
-        leavePregnant: 36,
-        leaveParental: 52,
-        leaveTraining: 12,
-        leaveHigherPower: 8,
-        leaveJobSearch: 25,
-        leaveBlood: 5,
-        leaveCarer: 16,
-        sickLeave: 52,
-      });
-
+  const loadAbsentEmployees = async () => {
+    try {
+      const data = await getMissingAttendance();
+      setAbsences(data);
+    } catch (err) {
+      console.error(err);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
+  }
+
+  const loadWaitingLeaves = async () => {
+    try {
+      const data = await getLeavesByParams(dayjs().startOf("month").toDate(), dayjs().endOf("month").toDate(), "OCZEKUJĄCE", undefined, undefined )
+      setLeaveRequests(data.filter((leave => leave.status == "OCZEKUJĄCE")));
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    loadPresentEmployees();
+    loadAbsentEmployees();
+    loadWaitingLeaves();
+  }, []);
+      
+  const [hoursSummary, setHoursSummary] = useState<HoursSummary>({
+    regular: 0,
+    overtimeDay: 0,
+    overtimeNight: 0,
+    overtimeHoliday: 0,
+    leaveVacation: 0,
+    leaveUnpaid: 0,
+    leaveCircumstance: 0,
+    leavePregnant: 0,
+    leaveParental: 0,
+    leaveTraining: 0,
+    leaveHigherPower: 0,
+    leaveJobSearch: 0,
+    leaveBlood: 0,
+    leaveCarer: 0,
+    sickLeave: 0,
+  });
+  
+  useEffect(() => {
+    (async () => {
+      try {
+        // pobieramy np. czerwiec 2025, z dwoma świętami
+        const summary = await getMonthlySummary(2025, 6, [
+          "2025-06-01",
+          "2025-06-15",
+        ]);
+        setHoursSummary(summary);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
   }, []);
 
   const pagedEmployees = presentEmployees.slice(
@@ -219,9 +165,9 @@ const Dashboard = () => {
     empPage * EMPLOYEES_PER_PAGE
   );
 
-  const filteredAbsences = absences.filter(a => a.daysAbsent > 2 && !a.excused);
+  // const filteredAbsences = absences.filter(a => a. > 2 && !a.excused);
 
-  const pagedAbsences = filteredAbsences.slice(
+  const pagedAbsences = absences.slice(
     (absPage - 1) * ABSENCES_PER_PAGE,
     absPage * ABSENCES_PER_PAGE
   )
@@ -241,10 +187,6 @@ const Dashboard = () => {
 
   return (
     <Box sx={{width: '100rem', mx: '8rem', mt: '3rem' }}>
-      <Typography variant="h4" gutterBottom fontWeight={600}>
-        Dashboard HR - Czerwiec 2025
-      </Typography>
-
       <Grid container rowSpacing={2} columnSpacing={2} minHeight={'40rem'}>
         {/* Obecni pracownicy */}
         <Grid size={6}>
@@ -258,6 +200,7 @@ const Dashboard = () => {
                     <TableCell>Pracownik</TableCell>
                     <TableCell>Status</TableCell>
                     <TableCell>Rozpoczęto</TableCell>
+                    <TableCell>Zakończono</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -267,24 +210,34 @@ const Dashboard = () => {
                       <TableCell>
                         <Stack direction="row" spacing={1.5} alignItems="center">
                           <Chip 
-                          avatar={<Avatar>{emp.name.charAt(0)}</Avatar>}
-                          label={emp.name}
+                          avatar={<Avatar>{emp.employee.name.charAt(0)}</Avatar>}
+                          label={emp.employee.name + " " + emp.employee.lastname}
                           />
                         </Stack>  
                       </TableCell>
                       <TableCell>
-                        <Chip 
-                          label={emp.status} 
-                          color={
-                            emp.status === "Obecny"
-                              ? "success"
-                              : emp.status === "Przerwa"
-                              ? "warning"
-                              : "default"
-                          } 
-                          size="small"/>
+                      <Chip
+                        label={
+                          emp.startTime == null
+                            ? "Nieobecny"
+                            : emp.endTime != null
+                              ? "Po pracy"
+                              : "Obecny"
+                        }
+                        color={
+                          emp.startTime == null
+                            ? "default"
+                            : emp.endTime != null
+                              ? "primary"
+                              : emp.breakTaken
+                                ? "warning"
+                                : "success"
+                        }
+                        size="small"
+                      />
                       </TableCell>
                       <TableCell>{emp.startTime}</TableCell>
+                      <TableCell>{emp.endTime}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -301,28 +254,26 @@ const Dashboard = () => {
             <Paper sx={{ p: 3, minHeight: '23rem', maxHeight: '23rem' }}>
               <Typography variant="h6">Nieusprawiedliwione nieobecności</Typography>
               <Divider sx={{ mb: 2 }} />
-              {filteredAbsences.length === 0 ? (
+              {absences.length === 0 ? (
                 <Typography variant="body2">Brak nieusprawiedliwionych nieobecności powyżej 2 dni.</Typography>
               ) : (
                 <Table size="small">
                   <TableHead>
                     <TableRow>
                       <TableCell>Pracownik</TableCell>
-                      <TableCell>Dni nieobecności</TableCell>
+                      {/* <TableCell>Ilość dni</TableCell> */}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {pagedAbsences
-                      .filter(a => a.daysAbsent > 2 && !a.excused)
                       .map(a => (
                         <TableRow key={a.id}>
                           <TableCell>
                             <Chip 
-                              avatar={<Avatar>{a.employee.charAt(0)}</Avatar>}
-                              label={a.employee}
+                              avatar={<Avatar>{a.name.charAt(0)}</Avatar>}
+                              label={a.name + " " + a.lastname}
                             />
                           </TableCell>
-                          <TableCell>{a.daysAbsent}</TableCell>
                         </TableRow>
                       ))}
                   </TableBody>
@@ -530,12 +481,12 @@ const Dashboard = () => {
                       <TableRow key={req.id}>
                         <TableCell>
                           <Chip 
-                            avatar={<Avatar>{req.employee.charAt(0)}</Avatar>}
-                            label={req.employee}
+                            avatar={<Avatar>{req.employee.name.charAt(0)}</Avatar>}
+                            label={req.employee.name}
                           />
                         </TableCell>
-                        <TableCell>{req.type}</TableCell>
-                        <TableCell>{req.submittedAt}</TableCell>
+                        <TableCell>{req.rodzaj}</TableCell>
+                        <TableCell>{new Date(req.złożono).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Chip 
                             label="Potrzebna akcja" 

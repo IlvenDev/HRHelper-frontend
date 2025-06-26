@@ -73,14 +73,18 @@ const AttendanceList = () => {
   
 
   const filteredRows = rows.filter((entry) => {
+    if (!entry.employee) return false;
+  
     const nameMatch = (entry.employee.name + " " + entry.employee.lastname)
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
     const sexMatch =
       sexFilter === "all" ||
       entry.employee.sex.toLowerCase() === sexFilter.toLowerCase();
+  
     return nameMatch && sexMatch;
   });
+  
 
   if (loading) {
     return (

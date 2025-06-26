@@ -1,5 +1,6 @@
 import api from '../api/axios';
 import type { AttendanceEditRequest, AttendanceTimeRequest, AttendanceTimeResponse } from '../types/attendanceDTO';
+import type { EmployeeBasicResponse } from '../types/profilesDTO';
 
 export const initializeAttendance = async (data: AttendanceTimeRequest): 
     Promise<AttendanceTimeResponse> => {
@@ -61,3 +62,18 @@ export const getWorkedHoursInMonth = async (year: number, month: number): Promis
     });
     return response.data;
     };
+
+export const getTodayAttendance = async (): Promise<AttendanceTimeResponse[]> => {
+    const resp = await api.get<AttendanceTimeResponse[]>('/attendance/today');
+    return resp.data;
+    };
+    
+export const getMissingAttendance = async (
+    days = 2
+    ): Promise<EmployeeBasicResponse[]> => {
+    const resp = await api.get<EmployeeBasicResponse[]>('/attendance/missing', {
+        params: { days },
+    });
+    return resp.data;
+    };
+

@@ -12,7 +12,7 @@ export interface AttendanceTimeResponse {
 export interface AttendanceTimeRequest {
     startTime: string;
     endTime?: string;
-    date: Date;
+    date: string;
     employeeId: number;
 }
 

@@ -1,4 +1,5 @@
 import api from "../api/axios";
+import type { HoursSummary } from "../types/dashboardDTO";
 
 // PROFILES
 export const getTotalEmployees = async (): Promise<number> => {
@@ -59,6 +60,17 @@ export const getCostDistribution = async (
     params: { year, month },
   });
   return res.data;
+};
+
+export const getMonthlySummary = async (
+  year: number,
+  month: number,
+  holidays: string[] = []
+): Promise<HoursSummary> => {
+  const resp = await api.get<HoursSummary>("/dashboard/monthly-summary", {
+    params: { year, month, holidays },
+  });
+  return resp.data;
 };
 
 // DEPARTMENTS

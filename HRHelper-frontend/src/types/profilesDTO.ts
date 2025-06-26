@@ -55,14 +55,20 @@ export interface EmployeeResidenceDetailsResponse {
 export interface EmployeeRequest {
     name: string;
     lastname: string;
+    email: string;
     pesel: string;
     phone: string;
-    email: string;
     dateOfBirth: Date;
     sex: string;
-    jobDetails: EmployeeJobDetailsRequest;
-    residenceDetails: EmployeeResidenceDetailsRequest;
-    emergencyContact: EmergencyContactRequest;
+    role: string;
+    dataZatrudnienia: Date;
+    dataZwolnienia: Date; 
+    stawka: number;
+    wymiarPracy: string;
+    rodzajRozliczenia: string;
+    staż: number;
+    dostępneDniUrlopu: number;
+    wykorzystaneDniUrlopu: number;
 }
 
 export interface EmployeeJobDetailsRequest {

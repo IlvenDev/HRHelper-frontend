@@ -18,6 +18,10 @@ import {
   Typography,
   TablePagination,
   Chip,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
 import { getEmployeeList } from "../../../services/profilesService";
@@ -68,6 +72,27 @@ const EmployeeList = () => {
 
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
+  };
+
+  const [openEmployeeDialog, setOpenEmployeeDialog] = useState(false);
+  const [newEmployeeData, setNewEmployeeData] = useState({
+    name: "",
+    lastname: "",
+    email: "",
+    phone: "",
+    stawka: "",
+    wymiarPracy: "Pełny etat",
+    rodzajRozliczenia: "Miesięczne",
+    dataZatrudnienia: null,
+    dataZwolnienia: null,
+  });
+
+  const handleOpenEmployeeDialog = () => setOpenEmployeeDialog(true);
+  const handleCloseEmployeeDialog = () => setOpenEmployeeDialog(false);
+  const handleSubmitNewEmployee = () => {
+    // Tu dodaj zapytanie do API lub logikę
+    console.log("Submitting:", newEmployeeData);
+    handleCloseEmployeeDialog();
   };
 
   if (loading) {
@@ -160,12 +185,103 @@ const EmployeeList = () => {
 
         </Box>
         <Chip 
-          component={RouterLink} 
-          to={"/employees/add"}
           label="Dodaj pracownika"
           color="primary"
           clickable
+          onClick={handleOpenEmployeeDialog}
           />
+          <Dialog
+            open={openEmployeeDialog}
+            onClose={handleCloseEmployeeDialog}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>Dodaj nowego pracownika</DialogTitle>
+            <DialogContent>
+              <TextField
+                label="Imię"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData.name}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, name: e.target.value })}
+              />
+              <TextField
+                label="Nazwisko"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData.lastname}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, lastname: e.target.value })}
+              />
+              <TextField
+                label="Email"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData.email}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, email: e.target.value })}
+              />
+              <TextField
+                label="Telefon"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData.phone}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, phone: e.target.value })}
+              />
+              <TextField
+                label="Stawka"
+                fullWidth
+                margin="normal"
+                type="number"
+                value={newEmployeeData.stawka}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, stawka: e.target.value })}
+              />
+              <TextField
+                select
+                label="Wymiar pracy"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData.wymiarPracy}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, wymiarPracy: e.target.value })}
+              >
+                <MenuItem value="Pełny etat">Pełny etat</MenuItem>
+                <MenuItem value="Pół etatu">Pół etatu</MenuItem>
+              </TextField>
+              <TextField
+                select
+                label="Rodzaj rozliczenia"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData.rodzajRozliczenia}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, rodzajRozliczenia: e.target.value })}
+              >
+                <MenuItem value="Miesięczne">Miesięczne</MenuItem>
+                <MenuItem value="Tygodniowe">Tygodniowe</MenuItem>
+              </TextField>
+              <TextField
+                label="Data zatrudnienia"
+                fullWidth
+                margin="normal"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={newEmployeeData.dataZatrudnienia || ""}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, dataZatrudnienia: e.target.value })}
+              />
+              <TextField
+                label="Data zwolnienia (opcjonalnie)"
+                fullWidth
+                margin="normal"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={newEmployeeData.dataZwolnienia || ""}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, dataZwolnienia: e.target.value })}
+              />
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseEmployeeDialog}>Anuluj</Button>
+              <Button variant="contained" onClick={handleSubmitNewEmployee}>
+                Dodaj
+              </Button>
+            </DialogActions>
+          </Dialog>
       </Box>
 
       <TableContainer component={Paper}>
@@ -205,7 +321,7 @@ const EmployeeList = () => {
                 <TableCell><Typography variant="body2">{emp.phone}</Typography></TableCell> */}
                 <TableCell>{new Date(emp.dataZatrudnienia).toLocaleDateString()}</TableCell>
                 <TableCell>{new Date(emp.dataZwolnienia).toLocaleDateString()}</TableCell>
-                <TableCell>{emp.stawka}</TableCell>
+                <TableCell>{emp.stawka + " zł/h"}</TableCell>
                 <TableCell>{emp.wymiarPracy}</TableCell>
                 <TableCell>{emp.rodzajRozliczenia}</TableCell>
                 <TableCell>{emp.staż}</TableCell>
