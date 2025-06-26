@@ -12,6 +12,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
   Typography,
@@ -84,6 +85,18 @@ const AttendanceList = () => {
   
     return nameMatch && sexMatch;
   });
+
+  const [page, setPage] = useState(0);
+  const rowsPerPage = 10;
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  }
+
+  const paginatedAttendance = filteredRows.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
   
 
   if (loading) {
@@ -134,7 +147,7 @@ const AttendanceList = () => {
       <TableContainer component={Paper} sx={{ mb: 2, minHeight: "300px", minWidth: "1050px" }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+            <TableRow >
               <TableCell sx={{ fontWeight: "bold" }}>Pracownik</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Data</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Rozpoczęcie</TableCell>
@@ -146,7 +159,7 @@ const AttendanceList = () => {
           </TableHead>
 
           <TableBody>
-            {filteredRows.map((record) => (
+            {paginatedAttendance.map((record) => (
               <TableRow key={record.id} hover>
                 <TableCell>
                   <Box display="flex" alignItems="center">
@@ -290,6 +303,16 @@ const AttendanceList = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      <Box sx={{ color: "white", '& .MuiTablePagination-root': { color: "white" }, '& .MuiSvgIcon-root': { color: "white" } }}>
+        <TablePagination
+          component="div"
+          count={filteredRows.length}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          rowsPerPageOptions={[]} 
+        />
+      </Box>
     </Box>
   );
 };

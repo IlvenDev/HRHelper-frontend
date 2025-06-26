@@ -17,16 +17,33 @@ import { LocalizationProvider } from '@mui/x-date-pickers';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import LoginPage from './components/LoginPage'
 import PersonalPanel from './components/User/PersonalPanel'
+import { useEffect, useState } from 'react'
 
 function App() {
+  const [role, setRole] = useState<string | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    const storedRole = localStorage.getItem("role");
+    const storedId = localStorage.getItem("employeeId");
+    setRole(storedRole);
+    setIsLoggedIn(storedId !== null);
+  }, []);
+
+  // Dodaj funkcję, którą przekażesz do LoginPage, żeby zaktualizować stan po zalogowaniu:
+  const onLogin = () => {
+    setRole(localStorage.getItem("role"));
+    setIsLoggedIn(localStorage.getItem("employeeId") !== null);
+  };
+
   return (
     <>
       <LocalizationProvider dateAdapter={AdapterDayjs}>
         <BrowserRouter>
-          <Navbar/>
+          {isLoggedIn && <Navbar />}
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
-            <Route path="/login" element={<LoginPage />} />
+            <Route path="/login" element={<LoginPage onLogin={onLogin}/>} />
             {/* HR paths */}
             <Route path='/dashboard' element={localStorage.getItem("role") === "HR" ? <Dashboard /> : <Navigate to="/unauthorized" />}/>
             <Route path='/employees' element={<EmployeeList />} />
@@ -41,7 +58,7 @@ function App() {
             <Route path="/leaves/add" element={<LeaveAddition />} />
             <Route path="/attendance" element={<AttendanceList />} />
             {/* Employee paths */}
-            <Route path="/personal_panel" element={<PersonalPanel />} />
+            <Route path="/personal-panel" element={<PersonalPanel />} />
           </Routes>
         </BrowserRouter>
       </LocalizationProvider>

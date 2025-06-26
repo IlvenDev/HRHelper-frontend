@@ -279,7 +279,7 @@ const PersonalPanel = () => {
                   <Typography variant="h6">Wpisz brakujące obecności</Typography>
                   <Table>
                     <TableHead>
-                      <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+                      <TableRow >
                         <TableCell sx={{ fontWeight: "bold" }}>Data</TableCell>
                         <TableCell sx={{ fontWeight: "bold" }}>Rozpoczęcie</TableCell>
                         <TableCell sx={{ fontWeight: "bold" }}>Zakończenie</TableCell>

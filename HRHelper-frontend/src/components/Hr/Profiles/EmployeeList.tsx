@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { EmployeeBasicResponse } from "../../../types/profilesDTO";
+import { type EmployeeRequest, type EmployeeBasicResponse } from "../../../types/profilesDTO";
 import {
   Avatar,
   Box,
@@ -24,7 +24,7 @@ import {
   DialogActions,
 } from "@mui/material";
 import { Link as RouterLink } from "react-router-dom";
-import { getEmployeeList } from "../../../services/profilesService";
+import { createEmployee, getEmployeeList } from "../../../services/profilesService";
 import SearchIcon from "@mui/icons-material/Search";
 import { EditNote, History } from "@mui/icons-material";
 
@@ -37,7 +37,7 @@ const EmployeeList = () => {
   const [billingTypeFilter, setBillingTypeFilter] = useState("all");
 
   const [page, setPage] = useState(0);
-  const rowsPerPage = 5;
+  const rowsPerPage = 10;
 
   async function loadEmployees() {
     const employeeList: EmployeeBasicResponse[] = await getEmployeeList();
@@ -75,22 +75,27 @@ const EmployeeList = () => {
   };
 
   const [openEmployeeDialog, setOpenEmployeeDialog] = useState(false);
-  const [newEmployeeData, setNewEmployeeData] = useState({
+  const [newEmployeeData, setNewEmployeeData] = useState<EmployeeRequest>({
     name: "",
     lastname: "",
     email: "",
+    pesel: "",
     phone: "",
-    stawka: "",
-    wymiarPracy: "Pełny etat",
-    rodzajRozliczenia: "Miesięczne",
-    dataZatrudnienia: null,
-    dataZwolnienia: null,
+    dateOfBirth: new Date(),
+    sex: "",
+    role: "",
+    dataZatrudnienia: new Date(),
+    dataZwolnienia: null, 
+    stawka: 0,
+    wymiarPracy: "",
+    rodzajRozliczenia: "",
+    staż: 0
   });
 
   const handleOpenEmployeeDialog = () => setOpenEmployeeDialog(true);
   const handleCloseEmployeeDialog = () => setOpenEmployeeDialog(false);
-  const handleSubmitNewEmployee = () => {
-    // Tu dodaj zapytanie do API lub logikę
+  const handleSubmitNewEmployee = async () => {
+    await createEmployee(newEmployeeData);
     console.log("Submitting:", newEmployeeData);
     handleCloseEmployeeDialog();
   };
@@ -154,7 +159,7 @@ const EmployeeList = () => {
               width: '8rem',
             }}
           >
-            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="all">Wszystkie</MenuItem>
             <MenuItem value="Pełny etat">Pełny etat</MenuItem>
             <MenuItem value="Pół etatu">Pół etatu</MenuItem>
           </TextField>
@@ -177,7 +182,7 @@ const EmployeeList = () => {
               width: '8rem',
             }}
           >
-            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="all">Wszystkie</MenuItem>
             <MenuItem value="Tygodniowe">Tygodniowe</MenuItem>
             <MenuItem value="Miesięczne">Miesięczne</MenuItem>
           </TextField>
@@ -220,12 +225,50 @@ const EmployeeList = () => {
                 onChange={(e) => setNewEmployeeData({ ...newEmployeeData, email: e.target.value })}
               />
               <TextField
+                label="Pesel"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData?.pesel}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, pesel: e.target.value })}
+              />
+              <TextField
                 label="Telefon"
                 fullWidth
                 margin="normal"
                 value={newEmployeeData.phone}
                 onChange={(e) => setNewEmployeeData({ ...newEmployeeData, phone: e.target.value })}
               />
+              <TextField
+                label="Data urodzenia"
+                fullWidth
+                margin="normal"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={newEmployeeData?.dateOfBirth || ""}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, dateOfBirth: e.target.value })}
+              />
+              <TextField
+                select
+                label="Płeć"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData?.sex}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, sex: e.target.value })}
+              >
+                <MenuItem value="M">Mężczyzna</MenuItem>
+                <MenuItem value="F">Kobieta</MenuItem>
+              </TextField>
+              <TextField
+                select
+                label="Pozycja"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData?.role}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, role: e.target.value })}
+              >
+                <MenuItem value="HR">HR</MenuItem>
+                <MenuItem value="USER">Pracownik</MenuItem>
+              </TextField>
               <TextField
                 label="Stawka"
                 fullWidth
@@ -287,10 +330,10 @@ const EmployeeList = () => {
       <TableContainer component={Paper}>
         <Table >
           <TableHead>
-            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+            <TableRow >
               <TableCell sx={{ fontWeight: "bold" }}>Pracownik</TableCell>
-              {/* <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Telefon</TableCell> */}
+              <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
+              <TableCell sx={{ fontWeight: "bold" }}>Telefon</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Data zatrudnienia</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Data zwolnienia</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Stawka</TableCell>
@@ -317,8 +360,8 @@ const EmployeeList = () => {
                           />
                   </Box>
                 </TableCell>
-                {/* <TableCell><Typography variant="body2">{emp.email}</Typography></TableCell>
-                <TableCell><Typography variant="body2">{emp.phone}</Typography></TableCell> */}
+                <TableCell><Typography variant="body2">{emp.email}</Typography></TableCell>
+                <TableCell><Typography variant="body2">{emp.phone}</Typography></TableCell>
                 <TableCell>{new Date(emp.dataZatrudnienia).toLocaleDateString()}</TableCell>
                 <TableCell>{new Date(emp.dataZwolnienia).toLocaleDateString()}</TableCell>
                 <TableCell>{emp.stawka + " zł/h"}</TableCell>
@@ -333,11 +376,11 @@ const EmployeeList = () => {
                     label={"Edytuj"}
                     clickable
                   />
-                  <Chip
+                  {/* <Chip
                     icon={<History />}
                     label={"Historia"}
                     clickable
-                  />
+                  /> */}
                 </TableCell>
               </TableRow>
             ))}

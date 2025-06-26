@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { login } from "../services/authService";
 
-const LoginPage = () => {
+const LoginPage = ({ onLogin }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -17,8 +17,8 @@ const LoginPage = () => {
   const handleLogin = async () => {
     try {
       await login(username, password)
-      // Redirect (optional)
-      window.location.href = localStorage.getItem("role") === "HR" ? "/dashboard" : "/personal_panel";
+      onLogin();
+      window.location.href = localStorage.getItem("role") === "HR" ? "/dashboard" : "/personal-panel";
     } catch (err) {
       setError("Invalid username or password.");
     }
@@ -45,8 +45,8 @@ const LoginPage = () => {
             onChange={(e) => setUsername(e.target.value)}
             fullWidth
             sx={{
-              input: { color: "black" },
-              label: { color: "black" },
+              // input: { color: "black" },
+              // label: { color: "black" },
               "& .MuiOutlinedInput-root": {
                 "& fieldset": { borderColor: "black" },
                 "&:hover fieldset": { borderColor: "black" },
@@ -62,8 +62,8 @@ const LoginPage = () => {
             onChange={(e) => setPassword(e.target.value)}
             fullWidth
             sx={{
-              input: { color: "black" },
-              label: { color: "black" },
+              // input: { color: "black" },
+              // label: { color: "black" },
               "& .MuiOutlinedInput-root": {
                 "& fieldset": { borderColor: "black" },
                 "&:hover fieldset": { borderColor: "black" },

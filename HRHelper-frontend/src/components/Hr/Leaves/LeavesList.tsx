@@ -12,6 +12,7 @@ import {
   TableCell,
   TableContainer,
   TableHead,
+  TablePagination,
   TableRow,
   TextField,
 } from "@mui/material";
@@ -89,6 +90,17 @@ const LeavesList = () => {
     return Math.floor(diffInMs / oneDay) + 1; // +1, jeśli chcesz, żeby np. 1-1 = 1 dzień
   };
   
+  const [page, setPage] = useState(0);
+  const rowsPerPage = 10;
+
+  const handleChangePage = (event: unknown, newPage: number) => {
+    setPage(newPage);
+  }
+
+  const paginatedLeaves = filteredRows.slice(
+    page * rowsPerPage,
+    page * rowsPerPage + rowsPerPage
+  );
 
   if (loading) {
     return (
@@ -104,7 +116,7 @@ const LeavesList = () => {
       <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mb={2} gap={2}>
         <Box display="flex" gap={2}>
           <TextField
-            placeholder="Search employee name"
+            placeholder="Znajdź pracownika"
             variant="outlined"
             size="small"
             value={searchQuery}
@@ -118,13 +130,13 @@ const LeavesList = () => {
             }}
           />
           <TextField select size="small" label="Status" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="all">Wszystkie</MenuItem>
             <MenuItem value="OCZEKUJĄCE">Oczekujące</MenuItem>
             <MenuItem value="ZATWIERDZONE">Zatwierdzone</MenuItem>
             <MenuItem value="ODRZUCONE">ODRZUCONE</MenuItem>
           </TextField>
           <TextField select size="small" label="Rodzaj" value={rodzajFilter} onChange={(e) => setRodzajFilter(e.target.value)}>
-            <MenuItem value="all">All</MenuItem>
+            <MenuItem value="all">Wszystkie</MenuItem>
             <MenuItem value="WYPOCZYNKOWY">Wypoczynkowy</MenuItem>
             <MenuItem value="CHOROBOWY">Chorobowy</MenuItem>
             <MenuItem value="OKOLICZNOŚCIOWY">Okolicznościowy</MenuItem>
@@ -146,7 +158,7 @@ const LeavesList = () => {
       <TableContainer component={Paper} sx={{ mb: 2, minHeight: "300px", minWidth: "1050px" }}>
         <Table>
           <TableHead>
-            <TableRow sx={{ backgroundColor: "#f5f5f5" }}>
+            <TableRow >
               <TableCell sx={{ fontWeight: "bold" }}>Pracownik</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Okres</TableCell>
               <TableCell sx={{ fontWeight: "bold" }}>Rodzaj</TableCell>
@@ -157,7 +169,7 @@ const LeavesList = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {filteredRows.map((leave) => (
+            {paginatedLeaves.map((leave) => (
               <TableRow key={leave.id} hover>
                 <TableCell>
                   <Box display="flex" alignItems="center">
@@ -205,6 +217,16 @@ const LeavesList = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      <Box sx={{ color: "white", '& .MuiTablePagination-root': { color: "white" }, '& .MuiSvgIcon-root': { color: "white" } }}>
+        <TablePagination
+          component="div"
+          count={filteredRows.length}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          rowsPerPageOptions={[]} 
+        />
+      </Box>
     </Box>
   );
 };

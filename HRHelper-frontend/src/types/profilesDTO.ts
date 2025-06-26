@@ -62,13 +62,11 @@ export interface EmployeeRequest {
     sex: string;
     role: string;
     dataZatrudnienia: Date;
-    dataZwolnienia: Date; 
+    dataZwolnienia: Date | null; 
     stawka: number;
     wymiarPracy: string;
     rodzajRozliczenia: string;
-    staż: number;
-    dostępneDniUrlopu: number;
-    wykorzystaneDniUrlopu: number;
+    // staż: number;
 }
 
 export interface EmployeeJobDetailsRequest {
