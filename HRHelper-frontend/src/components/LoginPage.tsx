@@ -39,7 +39,7 @@ const LoginPage = ({ onLogin }) => {
 
         <Box display="flex" flexDirection="column" gap={2}>
           <TextField
-            label="Username"
+            label="Nazwa użytkownika"
             variant="outlined"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
@@ -55,7 +55,7 @@ const LoginPage = ({ onLogin }) => {
             }}
           />
           <TextField
-            label="Password"
+            label="Hasło"
             variant="outlined"
             type="password"
             value={password}

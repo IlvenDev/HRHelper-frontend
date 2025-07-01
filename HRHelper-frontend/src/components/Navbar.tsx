@@ -6,13 +6,14 @@ import Button from '@mui/material/Button';
 import { Box, IconButton, Tooltip } from '@mui/material';
 import LogoutIcon from '@mui/icons-material/Logout';
 
-const Navbar = () => {
+const Navbar = ({ onLogout }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
     localStorage.removeItem("employeeId");
     localStorage.removeItem("role");
     navigate("/login");
+    onLogout();
   };
 
   const role = localStorage.getItem("role");

@@ -61,6 +61,8 @@ export interface EmployeeRequest {
     dateOfBirth: Date;
     sex: string;
     role: string;
+    username: string;
+    password: string;
     dataZatrudnienia: Date;
     dataZwolnienia: Date | null; 
     stawka: number;

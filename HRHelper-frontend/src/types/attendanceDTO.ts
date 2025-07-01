@@ -1,11 +1,11 @@
-import type { EmployeeBasicResponse, EmployeeDetailResponse } from "./profilesDTO";
+import type { EmployeeBasicResponse} from "./profilesDTO";
 
 export interface AttendanceTimeResponse {
     id: number;
     startTime: string;
     endTime?: string;
     breakTaken: boolean;
-    date: Date;
+    date: string;
     employee: EmployeeBasicResponse;
 }
 

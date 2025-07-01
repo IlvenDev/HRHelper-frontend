@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { use, useEffect, useState } from "react";
 import {
   Box,
   Paper,
@@ -28,8 +28,11 @@ import { getMissingAttendance, getTodayAttendance } from "../services/attendance
 import type { EmployeeBasicResponse } from "../types/profilesDTO";
 import { getMonthlySummary } from "../services/dashboardService";
 import { getLeavesByParams } from "../services/leavesService";
-import dayjs from "dayjs";
+import dayjs, { Dayjs } from "dayjs";
 import type { LeaveResponse } from "../types/leavesDTO";
+import { DatePicker } from "@mui/x-date-pickers";
+import { downloadMonthlyPersonalSummaryPdf, downloadMonthlySummaryPdf, generateAllMonthlyReportsForEmployees, generateCompanyDetailedReportPdf } from "../raporting/raportingService";
+import { getEmployeeList } from "../services/profilesService";
 
 type HoursSummary = {
   regular: number;
@@ -143,22 +146,6 @@ const Dashboard = () => {
     sickLeave: 0,
   });
   
-  useEffect(() => {
-    (async () => {
-      try {
-        // pobieramy np. czerwiec 2025, z dwoma świętami
-        const summary = await getMonthlySummary(2025, 6, [
-          "2025-06-01",
-          "2025-06-15",
-        ]);
-        setHoursSummary(summary);
-      } catch (e) {
-        console.error(e);
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
 
   const pagedEmployees = presentEmployees.slice(
     (empPage - 1) * EMPLOYEES_PER_PAGE,
@@ -176,6 +163,103 @@ const Dashboard = () => {
     (leavePage - 1) * LEAVES_PER_PAGE,
     leavePage * LEAVES_PER_PAGE
   );
+
+  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        // pobieramy np. czerwiec 2025, z dwoma świętami
+        const summary = await getMonthlySummary(2025, 6, [
+          "2025-06-01",
+          "2025-06-15",
+        ]);
+        setHoursSummary(summary);
+      } catch (e) {
+        console.error(e);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, []);
+
+  useEffect(() => {
+      const fetchSummary = async () => {
+        setLoading(true);
+        try {
+          const year = selectedDate.year();
+          const month = selectedDate.month() + 1; // JS: 0-based
+          const days = [
+            `${year}-${String(month).padStart(2, "0")}-01`,
+            `${year}-${String(month).padStart(2, "0")}-15`,
+          ];
+    
+          const summary = await getMonthlySummary(
+            year,
+            month,
+            days
+          );
+    
+          setHoursSummary(summary);
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setLoading(false);
+        }
+      };
+    
+      fetchSummary();
+    }, [selectedDate]);
+
+  const [selectedRaportDate, setSelectedRaportDate] = useState<Dayjs>(dayjs())
+
+  const handleGenerateMonthlySummaryReport = async () => {
+    // const employees = await getEmployeeList();
+    const year = selectedDate.year();
+    const month = selectedDate.month() + 1;
+
+    try {
+      downloadMonthlySummaryPdf(hoursSummary, year, month);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  const handleGenerateCompanySummaryReport = async () => {
+      const employees = await getEmployeeList();
+      const year = selectedRaportDate.year();
+      const month = selectedRaportDate.month() + 1;
+      const days = [
+        `${year}-${String(month).padStart(2, "0")}-01`,
+        `${year}-${String(month).padStart(2, "0")}-15`,
+      ];
+    
+      try {
+        generateAllMonthlyReportsForEmployees(
+          employees,
+          year,
+          month,
+          days
+        );
+    
+        // downloadMonthlySummaryPdf(summary, year, month);
+      } catch (error) {
+        console.error("Nie udało się pobrać podsumowania do raportu", error);
+      }
+    };
+
+    const handleGenerateDetailedReports = async () => {
+      const year = selectedDate.year();
+      const month = selectedDate.month() + 1;
+    
+      try {
+        const employees = await getEmployeeList();
+        await generateCompanyDetailedReportPdf(employees, year, month);
+      } catch (error) {
+        console.error("Nie udało się wygenerować raportów szczegółowych:", error);
+      }
+    };
+    
 
   if (loading) {
     return (
@@ -252,7 +336,7 @@ const Dashboard = () => {
               </Box>
             </Paper>
             <Paper sx={{ p: 3, minHeight: '23rem', maxHeight: '23rem' }}>
-              <Typography variant="h6">Nieusprawiedliwione nieobecności</Typography>
+              <Typography variant="h6">Ostatnie nieobecności</Typography>
               <Divider sx={{ mb: 2 }} />
               {absences.length === 0 ? (
                 <Typography variant="body2">Brak nieusprawiedliwionych nieobecności powyżej 2 dni.</Typography>
@@ -288,6 +372,34 @@ const Dashboard = () => {
                 />
               </Box>
             </Paper>
+            <Paper sx={{ p: 3, minHeight: '5rem'}}>
+              <Typography variant="h6" sx={{mb: 2}}>Raporty osobowe</Typography>
+              <Stack direction={"row"} spacing={3} sx={{mb: 2}}>
+                <DatePicker
+                  views={['year', 'month']}
+                  label="Wybierz miesiąc"
+                  minDate={dayjs('2022-01-01')}
+                  maxDate={dayjs()}
+                  value={selectedRaportDate}
+                  onChange={(newValue) => {
+                    if (newValue) setSelectedRaportDate(newValue);
+                  }}
+                  slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
+                />
+                <Chip
+                  label="Stwórz raport summaryczny"
+                  onClick={handleGenerateCompanySummaryReport}
+                  color="primary"
+                  clickable
+                />
+                <Chip
+                  label="Stwórz raport chronologiczny"
+                  onClick={handleGenerateDetailedReports}
+                  color="secondary"
+                  clickable
+                />
+              </Stack>
+            </Paper>
           </Stack>
         </Grid>
 
@@ -297,7 +409,26 @@ const Dashboard = () => {
             <Grid container rowSpacing={2}>
               <Grid size={12}>
                 <Paper sx={{ p: 3, minHeight: "18rem", maxHeight: "18rem", overflow: "auto"}}>
-                  <Typography variant="h6">Szczegóły przepracowanych godzin</Typography>
+                  <Stack direction={"row"} spacing={3} sx={{mb: 2}}>
+                    <Typography variant="h6">Szczegóły godzin</Typography>
+                    <DatePicker
+                      views={['year', 'month']}
+                      label="Wybierz miesiąc"
+                      minDate={dayjs('2022-01-01')}
+                      maxDate={dayjs()}
+                      value={selectedDate}
+                      onChange={(newValue) => {
+                        if (newValue) setSelectedDate(newValue);
+                      }}
+                      slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
+                    />
+                    <Chip
+                      label="Stwórz raport"
+                      onClick={handleGenerateMonthlySummaryReport}
+                      color="primary"
+                      clickable
+                    />
+                  </Stack>
                   <Divider sx={{ mb: 2 }} />
                     <ListItem>
                       <ListItemText primary="Wszystkie"/>
@@ -314,7 +445,7 @@ const Dashboard = () => {
                     <Collapse in={overtimeOpen} timeout="auto" unmountOnExit>
                       <List component="div" disablePadding>
                         <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Zwykłe" />
+                          <ListItemText primary="Dzienne" />
                           <Typography>{hoursSummary.overtimeDay}</Typography>
                         </ListItem>
                         <ListItem sx={{ pl: 4 }}>
@@ -408,14 +539,14 @@ const Dashboard = () => {
         sickLeave: 214, */}
               </Grid>
               <Grid size={12}>
-                <Paper sx={{ p: 3, minHeight: "18rem" }}>
+                <Paper sx={{ p: 3, minHeight: "37rem" }}>
                   <Typography variant="h6">Rozkład godzin</Typography>
                   <Divider sx={{ mb: 2 }} />
                   <PieChart
                     series={[
                       {
                         data: [
-                          // { id: 0, value: hoursSummary.regular, label: 'Normalne' },
+                          { id: 0, value: hoursSummary.regular, label: 'Normalne' },
                           { id: 1, value: hoursSummary.overtimeDay, label: 'Nadgodziny dzienne' },
                           { id: 2, value: hoursSummary.overtimeNight, label: 'Nadgodziny nocne' },
                           { id: 3, value: hoursSummary.overtimeHoliday, label: 'Nadgodziny świąteczne' },

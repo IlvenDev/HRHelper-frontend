@@ -84,12 +84,13 @@ const EmployeeList = () => {
     dateOfBirth: new Date(),
     sex: "",
     role: "",
+    username: "",
+    password: "",
     dataZatrudnienia: new Date(),
     dataZwolnienia: null, 
     stawka: 0,
     wymiarPracy: "",
-    rodzajRozliczenia: "",
-    staż: 0
+    rodzajRozliczenia: ""
   });
 
   const handleOpenEmployeeDialog = () => setOpenEmployeeDialog(true);
@@ -126,7 +127,7 @@ const EmployeeList = () => {
       >
         <Box display="flex" gap={2}>
           <TextField
-            placeholder="Search by name or email"
+            placeholder="Znajdź pracownika"
             variant="outlined"
             size="small"
             value={searchQuery}
@@ -258,6 +259,20 @@ const EmployeeList = () => {
                 <MenuItem value="M">Mężczyzna</MenuItem>
                 <MenuItem value="F">Kobieta</MenuItem>
               </TextField>
+              <TextField
+                label="Username"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData.username}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, username: e.target.value })}
+              />
+              <TextField
+                label="Hasło"
+                fullWidth
+                margin="normal"
+                value={newEmployeeData.password}
+                onChange={(e) => setNewEmployeeData({ ...newEmployeeData, password: e.target.value })}
+              />
               <TextField
                 select
                 label="Pozycja"

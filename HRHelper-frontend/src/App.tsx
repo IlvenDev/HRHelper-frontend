@@ -18,6 +18,11 @@ import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import LoginPage from './components/LoginPage'
 import PersonalPanel from './components/User/PersonalPanel'
 import { useEffect, useState } from 'react'
+import dayjs from 'dayjs'
+import 'dayjs/locale/pl';
+
+
+dayjs.locale("pl");
 
 function App() {
   const [role, setRole] = useState<string | null>(null);
@@ -36,11 +41,15 @@ function App() {
     setIsLoggedIn(localStorage.getItem("employeeId") !== null);
   };
 
+  const onLogout = () => {
+    setIsLoggedIn(false)
+  }
+
   return (
     <>
-      <LocalizationProvider dateAdapter={AdapterDayjs}>
+      <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale="pl">
         <BrowserRouter>
-          {isLoggedIn && <Navbar />}
+          {isLoggedIn && <Navbar onLogout={onLogout} />}
           <Routes>
             <Route path="/" element={<Navigate to="/login" replace />} />
             <Route path="/login" element={<LoginPage onLogin={onLogin}/>} />

@@ -73,6 +73,18 @@ export const getMonthlySummary = async (
   return resp.data;
 };
 
+export const getPersonalSummary = async (
+  employeeId: number,
+  year: number,
+  month: number,
+  holidays: string[] = []
+): Promise<HoursSummary> => {
+  const resp = await api.get<HoursSummary>(`/dashboard/personal-summary/${employeeId}`, {
+    params: { year, month, holidays },
+  });
+  return resp.data;
+};
+
 // DEPARTMENTS
 export type DepartmentSummary = {
   name: string;
