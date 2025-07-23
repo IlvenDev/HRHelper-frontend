@@ -8,17 +8,19 @@ import {
   Alert,
 } from "@mui/material";
 import { login } from "../services/authService";
+import { useNavigate } from "react-router-dom";
 
 const LoginPage = ({ onLogin }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
   const handleLogin = async () => {
     try {
       await login(username, password)
       onLogin();
-      window.location.href = localStorage.getItem("role") === "HR" ? "/dashboard" : "/personal-panel";
+      navigate("/personal-panel")
     } catch (err) {
       setError("Invalid username or password.");
     }
@@ -28,7 +30,7 @@ const LoginPage = ({ onLogin }) => {
     <Box sx={{width: '25rem', mx: "auto", mt: '10rem'}}>
       <Paper elevation={3} sx={{ padding: 4, mt: 10 }}>
         <Typography variant="h5" gutterBottom align="center">
-          Login
+          Logowanie
         </Typography>
 
         {error && (
@@ -72,7 +74,7 @@ const LoginPage = ({ onLogin }) => {
             }}
           />
           <Button variant="contained" color="primary" onClick={handleLogin}>
-            Log In
+            Zaloguj się
           </Button>
         </Box>
       </Paper>

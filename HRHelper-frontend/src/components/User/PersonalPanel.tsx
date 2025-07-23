@@ -1,47 +1,45 @@
-import { useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import {
   Box,
   Paper,
   Typography,
   Divider,
   CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Grid,
   Stack,
-  Button,
-  TablePagination,
-  TableContainer,
   Chip,
-  TextField,
+  Breadcrumbs,
+  Avatar,
+  LinearProgress,
+  styled,
+  Badge,
+  IconButton,
+  Tooltip,
+  Card,
+  Button,
+  Menu,
   MenuItem,
   Dialog,
   DialogTitle,
   DialogContent,
+  DialogContentText,
+  TextField,
   DialogActions,
-  Snackbar,
-  Alert,
-  ListItem,
-  ListItemText,
-  ListItemButton,
-  Collapse,
-  List,
 } from "@mui/material";
 import type { EmployeeBasicResponse } from "../../types/profilesDTO";
 import { getById } from "../../services/profilesService";
-import { getEmployeeLeaves, getLeavesByParams, requestLeave } from "../../services/leavesService";
+import { getLeavesByParams, requestLeave } from "../../services/leavesService";
 import type { LeaveResponse } from "../../types/leavesDTO";
 import { finalizeAttendance, getAttendanceByEmployeeAndDateRange, initializeAttendance } from "../../services/attendanceService";
 import { type AttendanceTimeResponse, type AttendanceTimeRequest } from "../../types/attendanceDTO";
-import { DatePicker } from "@mui/x-date-pickers";
+import { DateCalendar, DateField, DatePicker, PickersDay, type PickersDayProps } from "@mui/x-date-pickers";
 import dayjs, { Dayjs } from "dayjs";
-import { ExpandLess, ExpandMore } from "@mui/icons-material";
+import { AnnouncementOutlined, CalendarMonth, DateRange, MoreHoriz, Schedule } from "@mui/icons-material";
 import type { HoursSummary } from "../../types/dashboardDTO";
 import {getPersonalSummary } from "../../services/dashboardService";
 import { downloadDetailedDailyReportPdf, downloadMonthlyPersonalSummaryPdf } from "../../raporting/raportingService";
+import { Link } from "react-router-dom";
+import { PieChart, useDrawingArea } from "@mui/x-charts";
 
 const PersonalPanel = () => {
   const [loading, setLoading] = useState(true);
@@ -61,15 +59,6 @@ const PersonalPanel = () => {
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [timeInSeconds, setTimeInSeconds] = useState(0);
   const [breakTaken, setBreakTaken] = useState(false);
-  const [activeLeaves, setActiveLeaves] = useState<LeaveResponse[]>([]);
-  const [oldLeaves, setOldLeaves] = useState<LeaveResponse[]>([]);
-
-  const [editValues, setEditValues] = useState<{
-    date: Date,
-    startTime: string;
-    endTime: string;
-    przerwa: boolean;
-  } | null>(null);
 
   useEffect(() => {
     let interval: any;
@@ -143,41 +132,36 @@ const PersonalPanel = () => {
   
     setIsOnBreak((prev) => {
       const goingOnBreak = !prev;
-      if (goingOnBreak) setBreakTaken(true); // oznacz że przerwa została wzięta
+      if (!goingOnBreak) setBreakTaken(true); // oznacz że przerwa została wzięta
       return goingOnBreak;
     });
   };
 
-  const [pageActive, setPageActive] = useState(0);
-  const [rowsPerPageActive, setRowsPerPageActive] = useState(3);
-
-  const handleChangePageActive = (_event: unknown, newPage: number) => {
-    setPageActive(newPage);
-  };
-
-  const handleChangeRowsPerPageActive = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setRowsPerPageActive(parseInt(event.target.value, 10));
-    setPageActive(0);
-  };
-
   const [employeeLeaves, setEmployeeLeaves] = useState<LeaveResponse[]>();
-  const [selectedLeavesDate, setSelectedLeavesDate] = useState<Dayjs>(dayjs());
+
+  const [employeeId, setEmployeeId] = useState<number>(Number(localStorage.getItem("employeeId")))
+
+  // This load leaves incorrectly. Always the same ones
 
   async function loadLeaves() {
-    const response = await getLeavesByParams(new Date(selectedLeavesDate.startOf("month").toDate()), new Date(selectedLeavesDate.endOf("month").toDate()), undefined, undefined, Number(localStorage.getItem("employeeId")));
-    
-    // const response = await getEmployeeLeaves(Number(localStorage.getItem("employeeId")));
-    setEmployeeLeaves(response);
-    setOldLeaves(response.filter(leave => leave.status !== "OCZEKUJĄCE"));
-    setActiveLeaves(response.filter(leave => leave.status === "OCZEKUJĄCE"));
+    setLoading(true);
+    try {
+      const response = await getLeavesByParams(
+        selectedDate.startOf("month").toDate(),
+        selectedDate.endOf("month").toDate(),
+        undefined,
+        undefined,
+        employeeId
+      );
+      setEmployeeLeaves(response);
+    } finally {
+      setLoading(false);
+    }
   }
-
 
   useEffect(() => {
     loadLeaves();
   }, [])
-
-  const [openLeaveDialog, setOpenLeaveDialog] = useState(false);
 
   const [newLeaveData, setNewLeaveData] = useState({
     type: "",
@@ -186,76 +170,34 @@ const PersonalPanel = () => {
     reason: "",
   });
 
-  const leaveLength =
-    newLeaveData.startDate && newLeaveData.endDate
-      ? dayjs(newLeaveData.endDate).diff(dayjs(newLeaveData.startDate), 'day') + 1
-      : 0;
+  const [leaveMenuAnchor, setLeaveMenuAnchor] = useState<null | HTMLElement>(null);
+  const leaveMenuOpen = Boolean(leaveMenuAnchor)
+  const handleOpenLeaveMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setLeaveMenuAnchor(event.currentTarget)
+  }
+  const handleCloseLeaveMenu = () => {
+    setLeaveMenuAnchor(null)
+  }
 
-  const handleOpenLeaveDialog = () => {
-    setOpenLeaveDialog(true);
+  const [isLeaveRequestDialogOpen, setIsLeaveRequestDialogOpen] = useState(false)
+
+  // Toggle might work here
+  const handleLeaveRequestDialogOpen = () => {
+    setIsLeaveRequestDialogOpen(true)
+  }
+
+  const handleLeaveRequestDialogClose = () => {
+    setIsLeaveRequestDialogOpen(false)
+  }
+
+  const handleLeaveRequestDialogSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const formJson = Object.fromEntries((formData as any).entries());
+    const dataStart = formJson.dataStart;
+    console.log(dataStart);
+    handleLeaveRequestDialogClose();
   };
-
-  const handleCloseLeaveDialog = () => {
-    setOpenLeaveDialog(false);
-    setNewLeaveData({ type: "", startDate: null, endDate: null, reason: "" });
-  };
-
-  const [errorOpen, setErrorOpen] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-
-
-  const handleSubmitLeaveRequest = async () => {
-    const employeeDays = employeeData?.dostępneDniUrlopu || 0;
-  
-    const start = newLeaveData.startDate;
-    const end = newLeaveData.endDate;
-  
-    const leaveLength = start && end ? dayjs(end).diff(dayjs(start), 'day') + 1 : 0;
-  
-    if (leaveLength > employeeDays) {
-      setErrorMessage("Wybrany okres urlopu przekracza dostępne dni.");
-      setErrorOpen(true);
-      return;
-    }
-  
-    try {
-      const payload = {
-        employeeId: Number(localStorage.getItem("employeeId")),
-        rodzaj: newLeaveData.type,
-        dataStart: start?.toISOString().slice(0, 10),
-        dataKoniec: end?.toISOString().slice(0, 10),
-      };
-  
-      await requestLeave(payload);
-      handleCloseLeaveDialog();
-      await loadLeaves();
-    } catch (error) {
-      setErrorMessage("Wystąpił błąd podczas wysyłania prośby.");
-      setErrorOpen(true);
-      console.error("Błąd przy wysyłaniu prośby o urlop", error);
-    }
-  };
-
-  const [overtimeOpen, setOvertimeOpen] = useState(false);
-  const [paidLeavesOpen, setPaidLeaveOpen] = useState(false);
-  const [freeLeavesOpen, setFreeLeavesOpen] = useState(false);
-  const [specialLeavesOpen, setSpecialLeavesOpen] = useState(false);
-
-  const handleOvertimeOpen =() => {
-    setOvertimeOpen(!overtimeOpen)
-  }
-
-  const handlePaidLeavesOpen = () => {
-    setPaidLeaveOpen(!paidLeavesOpen)
-  }
-
-  const handleFreeLeavesOpen = () => {
-    setFreeLeavesOpen(!freeLeavesOpen)
-  }
-
-  const handleSpecialLeavesOpen = () =>{
-    setSpecialLeavesOpen(!specialLeavesOpen)
-  }
 
   const [hoursSummary, setHoursSummary] = useState<HoursSummary>({
       regular: 0,
@@ -277,9 +219,10 @@ const PersonalPanel = () => {
 
   const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs());
 
+  const [attendance, setAttendance] = useState<Record<string, 'present' | 'absent' | 'leave'>>({});
+
   useEffect(() => {
     const fetchSummary = async () => {
-      setLoading(true);
       try {
         const year = selectedDate.year();
         const month = selectedDate.month() + 1; // JS: 0-based
@@ -305,16 +248,23 @@ const PersonalPanel = () => {
   
     fetchSummary();
   }, [selectedDate]);
+
+  const [totalHours, setTotalHours] = useState<number>(Object.values(hoursSummary).reduce((sum, val) => sum + val, 0));
   
+  useEffect(() => {
+      const total = Object.values(hoursSummary).reduce((sum, val) => sum + val, 0);
+      setTotalHours(total);
+    }, [hoursSummary]);
+
   const [employeeAttendance, setEmployeeAttendance] = useState<AttendanceTimeResponse[]>();
   const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<Dayjs>(dayjs());
 
   useEffect(() => {
     const fetchAttendance = async () => {
-      if (!selectedAttendanceDate) return;
+      if (!selectedDate) return;
   
-      const startDate = selectedAttendanceDate.startOf("month").format("YYYY-MM-DD");
-      const endDate = selectedAttendanceDate.endOf("month").format("YYYY-MM-DD");
+      const startDate = selectedDate.startOf("month").format("YYYY-MM-DD");
+      const endDate = selectedDate.endOf("month").format("YYYY-MM-DD");
   
       try {
         const data = await getAttendanceByEmployeeAndDateRange(Number(localStorage.getItem("employeeId")), startDate, endDate);
@@ -325,67 +275,21 @@ const PersonalPanel = () => {
     };
   
     fetchAttendance();
-  }, [selectedAttendanceDate]);
+  }, [selectedDate]);
 
-  const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(4);
+  const [reportMenuAnchor, setReportMenuAnchor] = useState<null | HTMLElement>(null);
+  const reportMenuOpen = Boolean(reportMenuAnchor)
+  const handleOpenReportMenu = (event: React.MouseEvent<HTMLButtonElement>) => {
+    setReportMenuAnchor(event.currentTarget)
+  }
+  const handleCloseReportMenu = () => {
+    setReportMenuAnchor(null)
+  }
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
+  const handleCreateChronologicalReport = () => {
+
+    downloadDetailedDailyReportPdf(employeeData, employeeAttendance, employeeLeaves?.filter(leave => leave.status != "OCZEKUJĄCE"), selectedDate.year(), selectedDate.month() + 1);
   };
-  
-  const handleChangeRowsPerPage = (
-    event: React.ChangeEvent<HTMLInputElement>
-  ) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0); // reset to first page
-  };
-
-  const [newAttendanceData, setNewAttendanceData] = useState({
-    startTime: "",
-    endTime: "",
-    date: null,
-  });
-
-  const isDateValid = newAttendanceData.date
-? dayjs().diff(dayjs(newAttendanceData.date), 'day') <= 3
-: false;
-
-  const [openAttendanceDialog, setOpenAttendanceDialog] = useState(false);
-
-  const handleOpenAttendanceDialog = () => {
-    setOpenAttendanceDialog(true);
-  };
-
-  const handleCloseAttendanceDialog = () => {
-    setOpenAttendanceDialog(false);
-    setNewAttendanceData({
-      startTime: "",
-      endTime: "",
-      date: null,
-    });
-  };
-
-
-  const handleSubmitAttendance = async () => {
-    const payload = {
-      startTime: newAttendanceData.startTime,
-      endTime: newAttendanceData.endTime || null,
-      date: dayjs(newAttendanceData.date).format("YYYY-MM-DD"),
-      employeeId: employeeData?.id,
-    };
-
-    try {
-      await initializeAttendance(payload);
-      setOpenAttendanceDialog(false);
-      // odśwież dane lub pokaż Snackbar sukcesu
-    } catch (error) {
-      setErrorMessage("Wystąpił błąd przy dodawaniu obecności.");
-      setErrorOpen(true);
-    }
-  };
-
-  // const [selectedRaportDate, setSelectedRaportDate] = useState<Dayjs>(dayjs())
 
   const handleGenerateReport = async () => {
     const year = selectedDate.year();
@@ -409,10 +313,27 @@ const PersonalPanel = () => {
     }
   };
   
-  const handleCreateChronologicalReport = () => {
+  useEffect(() => {
+    if (employeeAttendance && employeeLeaves) {
+      const mapped = mapAttendanceStatus(employeeAttendance, employeeLeaves);
+      setAttendance(mapped);
+    }
+  }, [employeeAttendance, employeeLeaves]);
 
-    downloadDetailedDailyReportPdf(employeeData, employeeAttendance, employeeLeaves?.filter(leave => leave.status != "OCZEKUJĄCE"), selectedAttendanceDate.year(), selectedAttendanceDate.month() + 1);
-  };
+  const calculateUpcomingLeaveDayAmount = (dataStart: Date): number => {
+    const today = dayjs().startOf('day');
+    const leaveStart = dayjs(dataStart).startOf('day');
+
+    const daysUntilLeave = leaveStart.diff(today, 'day');
+
+    return daysUntilLeave;
+  }
+
+  const [selectedSlice, setSelectedSlice] = useState(["Suma", totalHours.toString()]);
+
+  useEffect(() => {
+        setSelectedSlice(["Suma", totalHours.toString()]);
+      }, [totalHours]);  
 
   if (loading) {
     return (
@@ -422,648 +343,481 @@ const PersonalPanel = () => {
     );
   }
 
+  function LinearProgressWithLabel({ value, max = 100 }) {
+    const clampedValue = Math.min((value / max) * 100, 100);
+    const actualPercentage = ((value / max) * 100).toFixed(0);
+  
+    const overLimit = value > max;
+  
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+        <Box sx={{ width: '100%', mr: 1 }}>
+          <LinearProgress
+            variant="determinate"
+            value={clampedValue}
+            sx={{
+              height: 10,
+              borderRadius: 5,
+              backgroundColor: overLimit ? '#ffebee' : undefined,
+              '& .MuiLinearProgress-bar': {
+                backgroundColor: overLimit ? '#d32f2f' : undefined,
+              },
+            }}
+          />
+        </Box>
+        <Box sx={{ minWidth: 45 }}>
+          <Typography variant="body2" color={overLimit ? 'error' : 'textSecondary'}>
+            {actualPercentage}%
+          </Typography>
+        </Box>
+      </Box>
+    );
+  }
+
+  const StyledText = styled('text')(({ theme }) => ({
+    fill: theme.palette.text.primary,
+    textAnchor: 'middle',
+    dominantBaseline: 'central',
+    fontSize: 20,
+  }));
+  
+  function PieCenterLabel({ selected }: { selected: string[] | undefined}) {
+    const { width, height, left, top } = useDrawingArea();
+    return (
+      <>
+        <StyledText x={left + width / 2} y={top + height / 2.3} fontWeight={"bold"} sx={{fontSize: "1rem", overflow: "auto", maxWidth: "1rem"}}>
+          {selected[0]}
+        </StyledText>
+        <StyledText x={left + width / 2} y={top + height / 1.8} sx={{fontSize: "2rem"}}>
+          {selected[1]}
+        </StyledText>
+      </>
+    );
+  }
+
+  const pieData = [
+    { id: 0, value: hoursSummary.regular, label: 'Normalne' },
+    { id: 1, value: hoursSummary.overtimeDay, label: 'Nadgodziny dzienne' },
+    { id: 2, value: hoursSummary.overtimeNight, label: 'Nadgodziny nocne' },
+    { id: 3, value: hoursSummary.overtimeHoliday, label: 'Nadgodziny świąteczne' },
+    { id: 4, value: hoursSummary.leaveVacation, label: 'Urlop wypoczynkowy' },
+    { id: 5, value: hoursSummary.leaveUnpaid, label: 'Urlop bezpłatny' },
+    { id: 6, value: hoursSummary.leaveCircumstance, label: 'Urlop okolicznościowy' },
+    { id: 7, value: hoursSummary.leavePregnant, label: 'Urlop macierzyński' },
+    { id: 8, value: hoursSummary.leaveParental, label: 'Urlop wychowawczy' },
+    { id: 9, value: hoursSummary.leaveTraining, label: 'Urlop szkoleniowy' },
+    { id: 10, value: hoursSummary.leaveHigherPower, label: 'Siła wyższa' },
+    { id: 11, value: hoursSummary.leaveJobSearch, label: 'Poszukiwanie pracy' },
+    { id: 12, value: hoursSummary.leaveBlood, label: 'Oddanie krwi' },
+    { id: 13, value: hoursSummary.leaveCarer, label: 'Opiekuńczy' },
+    { id: 14, value: hoursSummary.sickLeave, label: 'Urlop chorobowy' },
+  ];
+
+  const leaveTypes = [
+    'Urlop wypoczynkowy',
+    'Urlop bezpłatny',
+    'Urlop okolicznościowy',
+    'Urlop macierzyński',
+    'Urlop wychowawczy',
+    'Urlop szkoleniowy',
+    'Siła wyższa',
+    'Poszukiwanie pracy',
+    'Oddanie krwi',
+    'Opiekuńczy',
+    'Urlop chorobowy'
+  ];
+
+  function mapAttendanceStatus(
+    attendanceData: AttendanceTimeResponse[],
+    leaveData: LeaveResponse[]
+  ): Record<string, 'present' | 'absent' | 'leave'> {
+    const statusMap: Record<string, 'present' | 'absent' | 'leave'> = {};
+
+    attendanceData.forEach(({ date, startTime, endTime }) => {
+      if (startTime && endTime) {
+        statusMap[date] = 'present';
+      } else {
+        statusMap[date] = 'absent';
+      }
+    });
+  
+    leaveData.forEach(({ dataStart, dataKoniec }) => {
+      const start = dayjs(dataStart);
+      const end = dayjs(dataKoniec);
+  
+      for (let d = start; d.isBefore(end) || d.isSame(end); d = d.add(1, 'day')) {
+        const dateStr = d.format('YYYY-MM-DD');
+        if (statusMap[dateStr] == null) {
+          statusMap[dateStr] = 'leave';
+        }
+      }
+    });
+  
+    return statusMap;
+  }
+  
+  const badgeColorMap: Record<string, string> = {
+    present: 'success',
+    absent: 'error',
+    leave: 'primary'
+  };
+  
+  function DayWithBadge(props: PickersDayProps & { day: Dayjs }) {
+    const { day, outsideCurrentMonth, ...rest } = props;
+    const dateStr = day.format('YYYY-MM-DD');
+    const status = attendance[dateStr];
+    
+    const showBadge = !outsideCurrentMonth;
+    const color = badgeColorMap[status] || 'error';
+  
+    // Label to show in tooltip
+    const tooltipTitle = status === 'present' ? 'Obecny' : status === 'leave' ? 'Urlop' : 'Nieobecny'
+  
+    return (
+      <Tooltip title={tooltipTitle}>
+        <Badge
+          variant="dot"
+          color={color as any}
+          overlap="circular"
+          invisible={!showBadge}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        >
+          <PickersDay 
+            day={day} 
+            outsideCurrentMonth={outsideCurrentMonth} 
+            {...rest} 
+          />
+        </Badge>
+      </Tooltip>
+    );
+  }
+  
   return (
     <Box sx={{width: '100rem', mx: '8rem', mt: '3rem' }}>
+      <Breadcrumbs>
+        <Link color="inherit" to={"/"}>
+          Dashboard
+        </Link>
+        <Typography sx={{ color: 'text.primary' }}>Home</Typography>
+      </Breadcrumbs>
+      <Box display="flex" justifyContent="space-between" alignItems="center" pb={2}>
+        <Typography align="left" variant="h3">
+          {"Witaj z powrotem " + employeeData?.name + "! Dzisiaj jest " + dayjs().date() + " " + dayjs().format('MMMM')}
+        </Typography>
+        <Stack direction={"row"} spacing={2}>
+          <DatePicker
+            views={['year', 'month']}
+            label="Wybierz miesiąc"
+            minDate={dayjs('2025-01-01')}
+            maxDate={dayjs()}
+            value={selectedDate}
+            onChange={(newValue) => {
+              setSelectedDate(newValue);
+            }}
+            slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
+          />
+        </Stack>
+      </Box>
       <Grid container rowSpacing={2} columnSpacing={2}>
         <Grid size={7}>
           <Grid container columnSpacing={2} rowSpacing={2} sx={{mb: 2}}>
             <Grid size={6}>
-              <Paper sx={{ p: 3, minHeight: "10rem" }}>
-                <Box mt={2}>
-                  <Stack
-                    direction="column"
-                    spacing={2}
-                    alignItems="center"
-                    justifyContent="center"
-                    textAlign="center"
-                  >
-
-                  <Typography variant="h4" sx={{ mt: 1 }}>
-                    Czas pracy: {formatTime(timeInSeconds)}
-                  </Typography>
-                  <Stack direction="row" spacing={2} justifyContent="center" alignItems="center">
-                    {!isWorking && (
-                      <Chip
-                        label="Rozpocznij pracę"
-                        color="primary"
-                        onClick={handleStart}
-                        clickable
-                        sx={{ fontSize: '1rem', px: 2, py: 1 }}
-                      />
-                    )}
-
-                    
-
-                    {isWorking && (
-                      <>
-                        <Chip
-                          label={isOnBreak ? "Wróć do pracy" : "Przerwa"}
-                          color={isOnBreak ? "success" : "warning"}
-                          onClick={handleBreakToggle}
-                          clickable={!breakTaken || isOnBreak}
-                          sx={{ fontSize: '1rem', px: 2, py: 1 }}
-                          disabled={breakTaken && !isOnBreak}
-                        />
-                        <Chip
-                          label="Zakończ"
-                          color="error"
-                          onClick={handleStop}
-                          clickable
-                          sx={{ fontSize: '1rem', px: 2, py: 1 }}
-                        />
-                      </>
-                    )}
-                  </Stack>
-
-                  {isOnBreak && (
-                    <Typography variant="h6" color="warning.main" mt={1}>
-                      Przerwa aktywna
-                    </Typography>
-                  )}
+              <Paper sx={{ minHeight: "14rem", borderRadius: 4}} elevation={2}>
+                {/* <Box display={"flex"}>
+                  <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                    <Schedule />
+                  </Avatar>  
+                  <Typography variant="h5" sx={{mt: 2, ml: 2}}>Status: Oczekuje</Typography>
+                </Box> */}
+                <Box display="flex">
+                  <Stack sx={{pl: 2, pt: 2, mb: 2}}>
+                    {/* <Typography>Zaplanowano: 00:00:00</Typography> */}
+                    <Typography variant="h4">Pracujesz: {formatTime(timeInSeconds)}</Typography>
                   </Stack>
                 </Box>
+                <Divider />
+                <Box display={"flex"} mt={2} ml={2}>
+                  {!isWorking && 
+                  <Button
+                    variant="contained"
+                    sx={{borderRadius: 4}}
+                    size="large"
+                    onClick={handleStart}
+                  >
+                    Rozpocznij pracę
+                  </Button>}
+                </Box>
+                {isWorking && 
+                  <Stack sx={{pl: 2, pt: 2, mb: 2}} direction={"row"} spacing={2}> 
+                    <Button 
+                      variant="contained"
+                      sx={{borderRadius: 4}}
+                      color="error"
+                      size="large"
+                      onClick={handleStop}
+                    >
+                      Zakończ pracę
+                    </Button>
+                    {!breakTaken && 
+                    <Button 
+                      variant="contained"
+                      sx={{borderRadius: 4}}
+                      color="warning"
+                      size="large"
+                      onClick={handleBreakToggle}
+                    >
+                      {!isOnBreak ? "Weź przerwę" : "Zakończ przerwę"}  
+                    </Button>}
+                  </Stack>
+                }
               </Paper>
             </Grid>
             <Grid size={6}>
-              <Paper sx={{p: 3}}>
-                <Typography variant="h6">
-                    {employeeData?.name + " " + employeeData?.lastname}
-                </Typography>
-                <Divider sx={{mb: 2}}/>
-                <Table size="small" sx={{ '& td, & th': { fontSize: '0.85rem', padding: '6px 10px' } }}>
-                  <TableHead>
-                      <TableRow>
-                      <TableCell><b>Data zatrudnienia</b></TableCell>
-                      {/* <TableCell><b>Data zwolnienia</b></TableCell> */}
-                    <TableCell><b>Stawka</b></TableCell>
-                    <TableCell><b>Wymiar pracy</b></TableCell>
-                      <TableCell><b>Rodzaj rozliczenia</b></TableCell>
-                      <TableCell><b>Lata stażu</b></TableCell>
-                      </TableRow>
-                  </TableHead>
-                  <TableBody>
-                      {/* Przykładowy wpis – zastąp danymi z mapy */}
-                      <TableRow>
-                        <TableCell>{new Date(employeeData?.dataZatrudnienia).toLocaleDateString()}</TableCell>
-                        {/* <TableCell>{employeeData?.dataZwolnienia != null ? new Date(employeeData?.dataZwolnienia).toLocaleDateString() : "-" }</TableCell> */}
-                        <TableCell>{employeeData?.stawka + " zł/godz"}</TableCell>
-                        <TableCell>{employeeData?.wymiarPracy}</TableCell>
-                        <TableCell>{employeeData?.rodzajRozliczenia}</TableCell>
-                        <TableCell>{employeeData?.staż}</TableCell>
-                      </TableRow>
-                  </TableBody>
-                </Table>
+              <Paper elevation={2} sx={{borderRadius: 4, pb: 4}}>
+                <Box justifyContent={"space-between"} display={"flex"} minHeight={"4rem"}>
+                  <Box display={"flex"} gap={2} m={2}>
+                    <DateRange sx={{mt: 0.5}}/>
+                    <Typography variant="h5">
+                      Najbliższy urlop
+                    </Typography>
+                  </Box>
+                  <Box m={2}>
+                    <IconButton onClick={handleOpenLeaveMenu}>
+                      <MoreHoriz />
+                    </IconButton>
+                    <Menu 
+                      id="leave-menu"
+                      anchorEl={leaveMenuAnchor}
+                      open={leaveMenuOpen}
+                      onClose={handleCloseLeaveMenu}
+                    >
+                      <MenuItem onClick={handleLeaveRequestDialogOpen}>Złóż wniosek o urlop</MenuItem>
+                      <Dialog open={isLeaveRequestDialogOpen} onClose={handleLeaveRequestDialogClose}>
+                        <DialogTitle>Złóż wniosek urlopowy</DialogTitle>
+                        <DialogContent sx={{ paddingBottom: 0 }}>
+                          <form onSubmit={handleLeaveRequestDialogSubmit}>
+                            <Box display={"flex"} justifyContent={"space-between"} gap={2}>
+                              <TextField
+                                required
+                                margin="dense"
+                                id="dataStart"
+                                name="dataStart"
+                                label="Początek urlopu"
+                                type="date"
+                                fullWidth
+                                slotProps={{
+                                  inputLabel: {shrink: true}
+                                }}
+                              />
+                              <TextField
+                                required
+                                margin="dense"
+                                id="dataKoniec"
+                                name="dataKoniec"
+                                label="DataKoniec"
+                                type="date"
+                                fullWidth
+                                slotProps={{
+                                  inputLabel: {shrink: true}
+                                }}
+                              />
+                            </Box>
+                            <TextField
+                              select
+                              required
+                              margin="dense"
+                              id="rodzaj"
+                              name="rodzaj"
+                              label="Rodzaj"
+                              type="select"
+                              fullWidth
+                            >
+                              <Box sx={{maxHeight: "15rem", overflow: "auto"}}>
+                                {leaveTypes.map((type) => (
+                                  <MenuItem key={type} value={type}>
+                                    {type}
+                                  </MenuItem>
+                                ))}
+                              </Box>
+                            </TextField>
+                            
+                            <DialogActions>
+                              <Button onClick={handleLeaveRequestDialogClose}>Odrzuć</Button>
+                              <Button type="submit">Złóż</Button>
+                            </DialogActions>
+                          </form>
+                        </DialogContent>
+                      </Dialog>  
+                    </Menu>
+                  </Box>
+                </Box>
+                <Divider />
+                <Card elevation={4} sx={{ m: 2, borderRadius: 4 }}>
+                  {/* This needs separate logic from backend to actually get the last leave, as currently I only get this months */}
+                  {employeeLeaves && employeeLeaves.length > 0 && (
+                  <Stack direction="row" spacing={2} alignItems="center" ml={2} mt={2} mb={2}>
+                    <CalendarMonth />
+                    <Box>
+                      <Typography variant="h6" fontWeight="bold">
+                        {`${dayjs(employeeLeaves[0].dataStart).format('D MMMM')} - ${dayjs(employeeLeaves[0].dataKoniec).format('D MMMM')}`}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary" align="left">
+                        Ilość dni do: {calculateUpcomingLeaveDayAmount(employeeLeaves[0].dataStart)}
+                      </Typography>
+                    </Box>
+                  </Stack>)}
+                </Card>
               </Paper>
             </Grid>
           </Grid>
-          <Stack spacing={2}>
-            <Paper sx={{ p: 3, minHeight: "16rem" }}>
-                <Typography variant="h6">
-                  Oczekujące urlopy
-                </Typography>
-              <Stack 
-                direction={"row"} 
-                spacing={2}  
-                alignItems="center"
-                justifyContent="space-between">
-                  
-                <Stack direction={"row"} spacing={2}>
-                  <Typography>
-                    {"Dostępne dni urlopu: " +  employeeData?.dostępneDniUrlopu || ""}
-                  </Typography>
-                  <Typography>
-                    {"Użyte dni urlopu: " +  employeeData?.wykorzystaneDniUrlopu || ""}
-                  </Typography>
-                </Stack>
-                <Chip 
-                  color="primary"
-                  label={"Złóż prośbę"}
-                  clickable
-                  onClick={handleOpenLeaveDialog}
-                />
-              </Stack>
-                  <Dialog
-                  open={openLeaveDialog}
-                  onClose={handleCloseLeaveDialog}
-                  fullWidth
-                  maxWidth="sm"
+          <Grid size={12}>
+            <Paper elevation={2} sx={{minHeight: "16rem", borderRadius: 4 }}>
+              <Grid container columnSpacing={2}>
+                <Grid size={6}>
+                  <Stack 
+                    direction={"row"} 
+                    spacing={2}
+                    m={2}
                   >
-                    <DialogTitle>Złóż prośbę o urlop</DialogTitle>
-                    <DialogContent>
-                      <Stack direction={"row"} spacing={2}>
-                        <Typography>
-                          {"Dostępne dni urlopu: " +  employeeData?.dostępneDniUrlopu || ""}
-                        </Typography>
-                        <Typography>
-                          {"Użyte dni urlopu: " +  employeeData?.wykorzystaneDniUrlopu || ""}
-                        </Typography>
-                        <Typography>
-                          {leaveLength > 0 ? `Wybrany okres: ${leaveLength} dni` : ""}
-                        </Typography>
-                      </Stack>
-                      <Stack direction={"row"} spacing={2} sx={{mt: 2}}>
-                        <DatePicker
-                          label="Data rozpoczęcia"
-                          value={newLeaveData.startDate ? dayjs(newLeaveData.startDate) : null}
-                          onChange={(date) =>
-                            setNewLeaveData((prev) => ({
-                              ...prev,
-                              startDate: date ? date.toDate() : null,
-                            }))
-                          }
-                          slotProps={{
-                            textField: { variant: "standard" }
-                          }}
-                        />
-                        <DatePicker
-                          label="Data zakończenia"
-                          value={newLeaveData.endDate ? dayjs(newLeaveData.endDate) : null}
-                          onChange={(date) =>
-                            setNewLeaveData((prev) => ({
-                              ...prev,
-                              endDate: date ? date.toDate() : null,
-                            }))
-                          }
-                          slotProps={{
-                            textField: { variant: "standard" }
-                          }}
-                        />
-                      </Stack>
-                      <TextField
-                          select
-                          label="Typ urlopu"
-                          fullWidth
-                          margin="normal"
-                          value={newLeaveData.type}
-                          onChange={(e) =>
-                            setNewLeaveData((prev) => ({ ...prev, type: e.target.value }))
-                          }
-                        >
-                          <MenuItem value="all">All</MenuItem>
-                          <MenuItem value="WYPOCZYNKOWY">Wypoczynkowy</MenuItem>
-                          <MenuItem value="CHOROBOWY">Chorobowy</MenuItem>
-                          <MenuItem value="OKOLICZNOŚCIOWY">Okolicznościowy</MenuItem>
-                          <MenuItem value="SZKOLENIOWY">Szkoleniowy</MenuItem>
-                          <MenuItem value="BEZPŁATNY">Bezpłatny</MenuItem>
-                          <MenuItem value="WYCHOWAWCZY">Wychowawczy</MenuItem>
-                          <MenuItem value="MACIERZYŃSKI">Macierzyński</MenuItem>
-                          <MenuItem value="NA_POSZUKIWANIE_PRACY">Na poszukiwanie pracy</MenuItem>
-                          <MenuItem value="ODDANIE_KRWI">Oddanie krwi</MenuItem>
-                          <MenuItem value="SIŁA_WYŻSZA">Siła wyższa</MenuItem>
-                          <MenuItem value="OPIEKUŃCZY">Opiekuńczy</MenuItem>
-                        </TextField>
-                    </DialogContent>
-                    <DialogActions>
-                      <Button onClick={handleCloseLeaveDialog}>Anuluj</Button>
-                      <Button
-                        variant="contained"
-                        onClick={handleSubmitLeaveRequest}
-                        disabled={
-                          !newLeaveData.type ||
-                          !newLeaveData.startDate ||
-                          !newLeaveData.endDate ||
-                          (newLeaveData.startDate > newLeaveData.endDate)
-                        }
-                      >
-                        Wyślij
-                      </Button>
-                    </DialogActions>
-                  </Dialog>
-                  <Snackbar
-                    open={errorOpen}
-                    autoHideDuration={4000}
-                    onClose={() => setErrorOpen(false)}
-                    anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-                  >
-                    <Alert severity="error" onClose={() => setErrorOpen(false)} sx={{ width: '100%' }}>
-                      {errorMessage}
-                    </Alert>
-                  </Snackbar>
-              <TableContainer sx={{mt:2}}>
-                <Table size="small" aria-label="active leaves table" >
-                <TableHead>
-                    <TableRow>
-                    <TableCell sx={{ fontWeight: "bold" }}>Okres</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>Rodzaj</TableCell>
-                    <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                  {employeeLeaves?.filter(leave => leave.status === "OCZEKUJĄCE")
-                    .slice(pageActive * rowsPerPageActive, pageActive * rowsPerPageActive + rowsPerPageActive)
-                    .map((leave) => (
-                      <TableRow key={leave.id}>
-                        <TableCell>
-                          {new Date(leave.dataStart).toLocaleDateString()} - {new Date(leave.dataKoniec).toLocaleDateString()}
-                        </TableCell>
-                        <TableCell>{leave.rodzaj.replace(/_/g, " ")}</TableCell>
-                        <TableCell>
-                          <Chip
-                            label={leave.status}
-                            color={
-                              leave.status === "OCZEKUJĄCE"
-                                ? "warning"
-                                : leave.status === "ZATWIERDZONE"
-                                ? "success"
-                                : "error"
-                            }
-                            size="small"
-                          />
-                        </TableCell>
-                      </TableRow>
-                  ))}
-
-                  {/* Puste wiersze */}
-                  {Array.from({
-                    length:
-                      Math.max(
-                        0,
-                        rowsPerPageActive -
-                          employeeLeaves?.filter((leave) => leave.status === "OCZEKUJĄCE")
-                            .slice(pageActive * rowsPerPageActive, pageActive * rowsPerPageActive + rowsPerPageActive)
-                            .length
-                      ),
-                  }).map((_, i) => (
-                    <TableRow key={`empty-${i}`} sx={{ height: 33 }}>
-                      <TableCell colSpan={3} />
-                    </TableRow>
-                  ))}
-                </TableBody>
-                </Table>
-                  <TablePagination
-                  component="div"
-                  count={activeLeaves.length ?? 3}
-                  page={pageActive}
-                  onPageChange={handleChangePageActive}
-                  rowsPerPage={rowsPerPageActive}
-                  onRowsPerPageChange={handleChangeRowsPerPageActive}
-                  rowsPerPageOptions={[]}
+                    <Card elevation={4} sx={{p: 1, borderRadius: 4}}>
+                      <Typography>
+                        {`Wymiar pracy: ${employeeData?.wymiarPracy === "Pełny etat" ? 160 : 80} godz.`}
+                      </Typography>
+                    </Card>
+                    <Card elevation={4} sx={{p: 1, borderRadius: 4}}>
+                      <Typography>
+                        {`Przepracowano: ${hoursSummary.regular+hoursSummary.overtimeDay+hoursSummary.overtimeHoliday+hoursSummary.overtimeNight} godz. `} 
+                      </Typography>
+                    </Card>
+                    <Card elevation={4} sx={{p: 1, borderRadius: 4}}>
+                      <Typography>
+                        {`Nadgodziny: ${hoursSummary.overtimeDay+hoursSummary.overtimeHoliday+hoursSummary.overtimeNight} godz.`}
+                      </Typography>
+                    </Card>
+                  </Stack>
+                  <Box ml={2}>
+                    <LinearProgressWithLabel value={hoursSummary.regular+hoursSummary.overtimeDay+hoursSummary.overtimeHoliday+hoursSummary.overtimeNight} max={employeeData?.wymiarPracy === "Pełny etat" ? 160 : 80} />
+                  </Box>
+                  <Divider sx={{mt: 2, mb: 2}} />
+                  <DateCalendar
+                    value={selectedDate}
+                    slots={{ 
+                      day: DayWithBadge,   
+                      leftArrowIcon: () => null,
+                      rightArrowIcon: () => null, 
+                      switchViewIcon: () => null,
+                      calendarHeader: () => null,
+                    }}
+                    slotProps={{
+                      day: (ownerState) => ownerState,
+                    }}
                   />
-              </TableContainer >
-              <Divider sx={{mt: 3}}/>
-              <Typography variant="h6" mt={4}>
-                  Wybrane urlopy
-                </Typography>
-              <TableContainer sx={{mt:2}}>
-                    <Table size="small" aria-label="old leaves table">
-                    <TableHead>
-                        <TableRow>
-                        <TableCell sx={{ fontWeight: "bold" }}>Okres</TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Rodzaj</TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {employeeLeaves?.filter(leave => leave.status != "OCZEKUJĄCE")
-                        .slice(pageActive * rowsPerPageActive, pageActive * rowsPerPageActive + rowsPerPageActive)
-                        .map((leave) => (
-                          <TableRow key={leave.id}>
-                            <TableCell>
-                              {new Date(leave.dataStart).toLocaleDateString()} - {new Date(leave.dataKoniec).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell>{leave.rodzaj.replace(/_/g, " ")}</TableCell>
-                            <TableCell>
-                              <Chip
-                                label={leave.status}
-                                color={
-                                  leave.status === "OCZEKUJĄCE"
-                                    ? "warning"
-                                    : leave.status === "ZATWIERDZONE"
-                                    ? "success"
-                                    : "error"
-                                }
-                                size="small"
-                              />
-                            </TableCell>
-                          </TableRow>
-                      ))}
-
-                      {/* Puste wiersze */}
-                      {Array.from({
-                        length:
-                          Math.max(
-                            0,
-                            rowsPerPageActive -
-                              employeeLeaves?.filter((leave) => leave.status != "OCZEKUJĄCE")
-                                .slice(pageActive * rowsPerPageActive, pageActive * rowsPerPageActive + rowsPerPageActive)
-                                .length
-                          ),
-                      }).map((_, i) => (
-                        <TableRow key={`empty-${i}`} sx={{ height: 33 }}>
-                          <TableCell colSpan={3} />
-                        </TableRow>
-                      ))}
-                    </TableBody>
-
-                    </Table>
-                    <TablePagination
-                    component="div"
-                    count={oldLeaves.length ?? 3}
-                    page={pageActive}
-                    onPageChange={handleChangePageActive}
-                    rowsPerPage={rowsPerPageActive}
-                    onRowsPerPageChange={handleChangeRowsPerPageActive}
-                    rowsPerPageOptions={[]}
-                    />
-              </TableContainer>
+                </Grid>
+                <Grid size={6}>
+                  <Box display="flex" justifyContent="flex-end" m={2}>
+                    <IconButton onClick={handleOpenReportMenu} >
+                      <MoreHoriz />
+                    </IconButton>
+                    <Menu 
+                      id="report-menu"
+                      anchorEl={reportMenuAnchor}
+                      open={reportMenuOpen}
+                      onClose={handleCloseReportMenu}
+                    >
+                      <MenuItem onClick={handleGenerateReport}>Stwórz raport sumaryczny</MenuItem>  
+                      <MenuItem onClick={handleCreateChronologicalReport}>Stwórz raport chronologiczny</MenuItem>  
+                    </Menu>
+                  </Box>
+                  <PieChart
+                    series={[
+                      {
+                        data: pieData,
+                        highlightScope: { fade: 'global', highlight: 'item' },
+                        faded: { color: 'gray' },
+                        innerRadius: 120,
+                        valueFormatter: (value) => {
+                          const total = Object.values(hoursSummary).reduce((sum, val) => sum + val, 0);
+                          return `${((value.value/total)*100).toFixed(1)}%`
+                        },
+                      },
+                    ]}
+            
+                    hideLegend={true}
+                    width={400}
+                    height={400}
+                    onHighlightChange={(highlightedItem) => {
+                      if (highlightedItem) {
+                        setSelectedSlice([pieData[highlightedItem.dataIndex]?.label, pieData[highlightedItem.dataIndex]?.value]);
+                      } else {
+                        setSelectedSlice(["Suma", totalHours.toString()]);
+                      }
+                    }}
+                  >
+                    <PieCenterLabel selected={selectedSlice} />
+                  </PieChart>
+                </Grid>
+              </Grid>
             </Paper>
-          </Stack>
-          {/* <Grid size={12} sx={{mt: 2}}>
-            <Paper sx={{ p: 3 }}>
-              <Stack
-                direction="row"
-                spacing={4}
-                justifyContent="center"
-                alignItems="center"
-              >
-                <DatePicker
-                views={['year', 'month']}
-                label="Wybierz miesiąc"
-                minDate={dayjs('2022-01-01')}
-                maxDate={dayjs()}
-                value={selectedRaportDate}
-                onChange={(newValue) => {
-                  if (newValue) setSelectedRaportDate(newValue);
-                }}
-                slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
-              />
-                
-                <Chip
-                  label="Stwórz raport chronologiczny"
-                  // onClick={handleCreateChronologicalReport} // <- podmień na swoją funkcję
-                  color="secondary"
-                  clickable
-                  sx={{
-                    fontSize: "1.2rem",
-                    px: 3,
-                    py: 2,
-                    height: "auto",
-                  }}
-                />
-              </Stack>
-            </Paper>
-          </Grid> */}
+          </Grid>
         </Grid>
           <Grid size={5}>
             <Stack rowGap={1}>
-            <Paper sx={{ p: 3, overflow: "auto", maxHeight: "24rem" }}>
-              <Stack direction={"row"} spacing={3} sx={{mb: 2}}>
-                <Typography variant="h6">Szczegóły godzin</Typography>
-                <DatePicker
-                  views={['year', 'month']}
-                  label="Wybierz miesiąc"
-                  minDate={dayjs('2022-01-01')}
-                  maxDate={dayjs()}
-                  value={selectedDate}
-                  onChange={(newValue) => {
-                    if (newValue) setSelectedDate(newValue);
-                  }}
-                  slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
-                />
-                <Chip
-                  label="Stwórz raport"
-                  onClick={handleGenerateReport}
-                  color="primary"
-                  clickable
-                />
-              </Stack>
-                  <ListItem>
-                    <ListItemText primary="Wszystkie"/>
-                    <Typography>{Object.values(hoursSummary).reduce((sum, val) => sum + val, 0)}</Typography>
-                  </ListItem>
-                  <ListItem>
-                    <ListItemText primary="Normalne"/>
-                    <Typography>{hoursSummary.regular}</Typography>
-                  </ListItem>
-                  <ListItemButton onClick={handleOvertimeOpen}>
-                    <ListItemText primary="Nadgodziny" />
-                    {overtimeOpen ? <ExpandLess /> : <ExpandMore />}
-                  </ListItemButton>
-                  <Collapse in={overtimeOpen} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Zwykłe" />
-                        <Typography>{hoursSummary.overtimeDay}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Nocne" />
-                        <Typography>{hoursSummary.overtimeNight}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Święta i niedziele" />
-                        <Typography>{hoursSummary.overtimeHoliday}</Typography>
-                      </ListItem>
-                    </List>
-                  </Collapse>
-                  <ListItemButton onClick={handlePaidLeavesOpen}>
-                    <ListItemText primary="Urlopy płatne" />
-                    {paidLeavesOpen ? <ExpandLess /> : <ExpandMore />}
-                  </ListItemButton>
-                  <Collapse in={paidLeavesOpen} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Wypoczynkowe" />
-                        <Typography>{hoursSummary.leaveVacation}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Chorobowe" />
-                        <Typography>{hoursSummary.sickLeave}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Okolicznościowe" />
-                        <Typography>{hoursSummary.leaveCircumstance}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Szkoleniowe" />
-                        <Typography>{hoursSummary.leaveTraining}</Typography>
-                      </ListItem>
-                    </List>
-                  </Collapse>
-                  <ListItemButton onClick={handleFreeLeavesOpen}>
-                    <ListItemText primary="Urlopy bezpłatne" />
-                    {freeLeavesOpen ? <ExpandLess /> : <ExpandMore />}
-                  </ListItemButton>
-                  <Collapse in={freeLeavesOpen} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Bezpłatny" />
-                        <Typography>{hoursSummary.leaveUnpaid}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Wychowawczy" />
-                        <Typography>{hoursSummary.leaveParental}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Macierzyński" />
-                        <Typography>{hoursSummary.leavePregnant}</Typography>
-                      </ListItem>
-                    </List>
-                  </Collapse>
-                  <ListItemButton onClick={handleSpecialLeavesOpen}>
-                    <ListItemText primary="Urlopy specjalne" />
-                    {specialLeavesOpen ? <ExpandLess /> : <ExpandMore />}
-                  </ListItemButton>
-                  <Collapse in={specialLeavesOpen} timeout="auto" unmountOnExit>
-                    <List component="div" disablePadding>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Na poszukiwanie pracy" />
-                        <Typography>{hoursSummary.leaveJobSearch}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Oddanie krwi" />
-                        <Typography>{hoursSummary.leaveBlood}</Typography>
-                      </ListItem>
-                      <ListItem sx={{ pl: 4 }}>
-                        <ListItemText primary="Siła wyższa" />
-                        <Typography>{hoursSummary.leaveHigherPower}</Typography>
-                      </ListItem>
-                    </List>
-                  </Collapse>
-                  <ListItem>
-                    <ListItemText primary="Opiekuńczy"/>
-                    <Typography>{hoursSummary.leaveCarer}</Typography>
-                  </ListItem>
-            </Paper>
-            <Paper sx={{p: 3, pb: 0, minHeight: "23rem"}}>
-              <Stack direction={"row"} spacing={3}>
-                {/* views={['year', 'month']}
-                label="Wybierz miesiąc"
-                minDate={dayjs('2022-01-01')}
-                maxDate={dayjs()}
-                value={selectedDate}
-                onChange={(newValue) => {
-                  if (newValue) setSelectedDate(newValue);
-                }}
-                slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }} */}
-                <Typography variant="h6">Godziny</Typography>
-                <DatePicker
-                  views={['year', 'month']}
-                  label="Wybierz miesiąc"
-                  minDate={dayjs('2022-01-01')}
-                  maxDate={dayjs()}
-                  value={selectedAttendanceDate}
-                  onChange={(newValue) => {
-                    if (newValue) setSelectedAttendanceDate(newValue);
-                  }}
-                  slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
-                />
-                <Chip
-                  label={"Uzupełnij godziny"}
-                  color="primary"
-                  clickable
-                  onClick={handleOpenAttendanceDialog}
-                />
-                <Chip
-                  label="Stwórz raport"
-                  onClick={handleCreateChronologicalReport} // 
-                  color="secondary"
-                  clickable
-                />
-                <Dialog
-                  open={openAttendanceDialog}
-                  onClose={handleCloseAttendanceDialog}
-                  fullWidth
-                  maxWidth="sm"
-                >
-                  <DialogTitle>Dodaj godziny pracy</DialogTitle>
-                  <DialogContent>
-                    <Stack direction="column" spacing={2}>
-                      <DatePicker
-                        label="Data obecności"
-                        value={newAttendanceData.date ? dayjs(newAttendanceData.date) : null}
-                        onChange={(date) =>
-                          setNewAttendanceData((prev) => ({
-                            ...prev,
-                            date: date ? date.toDate() : null,
-                          }))
-                        }
-                        slotProps={{
-                          textField: { variant: "standard", required: true },
-                        }}
-                      />
-                      <TextField
-                        label="Godzina rozpoczęcia (np. 08:00)"
-                        variant="filled"
-                        fullWidth
-                        required
-                        value={newAttendanceData.startTime}
-                        onChange={(e) =>
-                          setNewAttendanceData((prev) => ({ ...prev, startTime: e.target.value }))
-                        }
-                      />
-                      <TextField
-                        label="Godzina zakończenia (opcjonalnie)"
-                        variant="filled"
-                        fullWidth
-                        value={newAttendanceData.endTime}
-                        onChange={(e) =>
-                          setNewAttendanceData((prev) => ({ ...prev, endTime: e.target.value }))
-                        }
-                      />
+              <Paper sx={{overflow: "auto", maxHeight: "46rem", minHeight: "15rem", borderRadius: 4}} elevation={2}>
+                <Paper elevation={4} sx={{marginInline: 2, mt: 2, p: 2, borderRadius: 4, width: "18rem"}}>
+                  <Stack direction={"row"} spacing={3} ml={2}>
+                    <AnnouncementOutlined sx={{alignSelf: "center"}}/>
+                    <Typography variant="h5">Ostatnie ogłoszenia</Typography>
+                  </Stack>
+                </Paper>
+                <Stack>
+                  <Card elevation={4} sx={{display: "flex", align: "left", marginInline: 2, mt: 2, borderRadius: 4}}>
+                    <Stack sx={{p:2}}>
+                      <Typography variant="h5" align="left"  sx={{fontWeight: "bold", mb: 1}}>Tytuł ogłoszenia</Typography>
+                      <Typography variant="h6" align="left">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer accumsan enim vel mi viverra congue. Sed condimentum at mauris a varius. Duis ac rutrum felis. Integer quis euismod quam. Nam malesuada porttitor semper. Vivamus finibus, urna quis dictum molestie, augue ante congue felis, eu rutrum mi tellus sed libero. Aenean tristique cursus magna ultricies vehicula. Fusce a auctor eros, nec volutpat velit. </Typography>
                     </Stack>
-                    {!isDateValid && newAttendanceData.date && (
-                      <Typography color="error" sx={{ mt: 2 }}>
-                        Nie można dodać obecności starszej niż 3 dni.
-                      </Typography>
-                    )}
-                  </DialogContent>
-                  <DialogActions>
-                    <Button onClick={handleCloseAttendanceDialog}>Anuluj</Button>
-                    <Button
-                      variant="contained"
-                      onClick={handleSubmitAttendance}
-                      disabled={
-                        !newAttendanceData.startTime ||
-                        !newAttendanceData.date ||
-                        !isDateValid
-                      }
-                    >
-                      Zapisz
-                    </Button>
-                  </DialogActions>
-                </Dialog>
-              </Stack>
-                <TableContainer sx={{mt:2, width: "100%"}}>
-                  <Table>
-                    <TableHead>
-                      <TableRow >
-                        {/* <TableCell sx={{ fontWeight: "bold" }}>Pracownik</TableCell> */}
-                        <TableCell sx={{ fontWeight: "bold" }}>Data</TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Rozpoczęcie</TableCell>
-                        <TableCell sx={{ fontWeight: "bold" }}>Zakończenie</TableCell>
-                        {/* <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell> */}
-                        {/* <TableCell sx={{ fontWeight: "bold" }}>Przerwa</TableCell> */}
-                        {/* <TableCell sx={{ fontWeight: "bold" }}>Akcje</TableCell> */}
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                    {employeeAttendance
-                      ?.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                      .map((att) => (
-                        <TableRow key={att.id} hover>
-                          <TableCell>{att.date}</TableCell>
-                          <TableCell>{att.startTime}</TableCell>
-                          <TableCell>{att.endTime || "-"}</TableCell>
-                          {/* <TableCell></TableCell> */}
-                        </TableRow>
-                    ))}
-
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-                <TablePagination
-                  component="div"
-                  count={employeeAttendance?.length || 0}
-                  page={page}
-                  onPageChange={handleChangePage}
-                  rowsPerPage={rowsPerPage}
-                  onRowsPerPageChange={handleChangeRowsPerPage}
-                  rowsPerPageOptions={[]}
-                />
-              </Paper>
-            </Stack>
-          </Grid>
-          
+                  </Card>
+                  <Card elevation={4} sx={{display: "flex", align: "left", marginInline: 2, mb: 2, mt: 2, borderRadius: 4}}>
+                    <Stack sx={{p:2}}>
+                      <Typography variant="h5" align="left"  sx={{fontWeight: "bold", mb: 1}}>Tytuł ogłoszenia</Typography>
+                      <Typography variant="h6" align="left">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer accumsan enim vel mi viverra congue. Sed condimentum at mauris a varius. Duis ac rutrum felis. Integer quis euismod quam. Nam malesuada porttitor semper. Vivamus finibus, urna quis dictum molestie, augue ante congue felis, eu rutrum mi tellus sed libero. Aenean tristique cursus magna ultricies vehicula. Fusce a auctor eros, nec volutpat velit. </Typography>
+                    </Stack>
+                  </Card>
+                  <Card elevation={4} sx={{display: "flex", align: "left", marginInline: 2, mb: 2, mt: 2, borderRadius: 4}}>
+                    <Stack sx={{p:2}}>
+                      <Typography variant="h5" align="left"  sx={{fontWeight: "bold", mb: 1}}>Tytuł ogłoszenia</Typography>
+                      <Typography variant="h6" align="left">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Integer accumsan enim vel mi viverra congue. Sed condimentum at mauris a varius. Duis ac rutrum felis. Integer quis euismod quam. Nam malesuada porttitor semper. Vivamus finibus, urna quis dictum molestie, augue ante congue felis, eu rutrum mi tellus sed libero. Aenean tristique cursus magna ultricies vehicula. Fusce a auctor eros, nec volutpat velit. </Typography>
+                    </Stack>
+                  </Card>
+                </Stack>
+            </Paper>
+            {/* <Paper sx={{ minHeight: "16rem", maxHeight: "16rem", borderRadius: 4, overflow: "auto"}} elevation={2} >
+                <Paper elevation={4} sx={{display: "flex", m: 1, borderRadius: 4}}>
+                  <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                    <Schedule />
+                  </Avatar>  
+                  <Typography variant="h5" sx={{mt: 2, ml: 2}}>Alert</Typography>
+                </Paper>
+                <Paper elevation={4} sx={{display: "flex", m: 1, borderRadius: 4}}>
+                  <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                    <Schedule />
+                  </Avatar>  
+                  <Typography variant="h5" sx={{mt: 2, ml: 2}}>Alert</Typography>
+                </Paper>
+                <Paper elevation={4} sx={{display: "flex", m: 1, borderRadius: 4}}>
+                  <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                    <Schedule />
+                  </Avatar>  
+                  <Typography variant="h5" sx={{mt: 2, ml: 2}}>Alert</Typography>
+                </Paper>
+                <Paper elevation={4} sx={{display: "flex", m: 1, borderRadius: 4}}>
+                  <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                    <Schedule />
+                  </Avatar>  
+                  <Typography variant="h5" sx={{mt: 2, ml: 2}}>Alert</Typography>
+                </Paper>
+              </Paper> */}
+          </Stack>
+        </Grid>
       </Grid>
     </Box>
   )

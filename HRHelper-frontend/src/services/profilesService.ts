@@ -1,5 +1,5 @@
 import api from "../api/axios";
-import type { EmployeeBasicResponse, EmployeeDetailResponse, EmployeeRequest } from "../types/profilesDTO";
+import type { EmployeeBasicResponse, EmployeeDetailResponse, EmployeeLeavesUpdateRequest, EmployeeRequest } from "../types/profilesDTO";
 
 export const createEmployee = async (employee: EmployeeRequest):
     Promise<EmployeeBasicResponse> => {
@@ -13,7 +13,7 @@ export const updateEmployee = async (employeeId: number, employee: EmployeeReque
         return response.data;
     };
 
-export const updateLeaveDays = async (employeeId: number, leaveDays: Partial<EmployeeRequest>):
+export const updateLeaveDays = async (employeeId: number, leaveDays: EmployeeLeavesUpdateRequest):
     Promise<String> => {
         const response = await api.patch(`/profiles/${employeeId}/leave-days`, leaveDays)
         return response.data;

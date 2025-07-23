@@ -7,6 +7,7 @@ import {
   InputAdornment,
   MenuItem,
   Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -22,8 +23,9 @@ import { editAttendance, getAllAttendance, getAttendanceByDateRange } from "../.
 import { DatePicker } from "@mui/x-date-pickers";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
-import { EditNote } from "@mui/icons-material";
+import { EditNote, MoreHoriz } from "@mui/icons-material";
 import type { AttendanceEditRequest, AttendanceTimeResponse } from "../../../types/attendanceDTO";
+import { DataGrid, type GridColDef, type GridRenderCellParams } from "@mui/x-data-grid";
 
 const AttendanceList = () => {
   const [rows, setRows] = useState<AttendanceTimeResponse[]>([]);
@@ -52,23 +54,21 @@ const AttendanceList = () => {
     }
   };
 
-  // const [selectedEmployee, setSelectedEmployee] = useState();
+  const fetchDataByDate = async () => {
+    if (beginDate && endDate) {
+      try {
+        setLoading(true);
+        const data = await getAttendanceByDateRange(beginDate.format('YYYY-MM-DD'), endDate.format('YYYY-MM-DD'));
+        setRows(data);
+      } catch (err) {
+        console.error("Failed to fetch attendance between dates:", err);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
 
   useEffect(() => {
-    const fetchDataByDate = async () => {
-      if (beginDate && endDate) {
-        try {
-          setLoading(true);
-          const data = await getAttendanceByDateRange(beginDate.format('YYYY-MM-DD'), endDate.format('YYYY-MM-DD'));
-          setRows(data);
-        } catch (err) {
-          console.error("Failed to fetch attendance between dates:", err);
-        } finally {
-          setLoading(false);
-        }
-      }
-    };
-  
     fetchDataByDate();
   }, [beginDate, endDate]);
   
@@ -79,25 +79,67 @@ const AttendanceList = () => {
     const nameMatch = (entry.employee.name + " " + entry.employee.lastname)
       .toLowerCase()
       .includes(searchQuery.toLowerCase());
-    const sexMatch =
-      sexFilter === "all" ||
-      entry.employee.sex.toLowerCase() === sexFilter.toLowerCase();
-  
-    return nameMatch && sexMatch;
+
+    return nameMatch;
   });
 
-  const [page, setPage] = useState(0);
-  const rowsPerPage = 10;
-
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  }
-
-  const paginatedAttendance = filteredRows.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
-  
+  const columns: GridColDef<(typeof filteredRows)[number]>[] = [
+    // { field: 'id', headerName: 'ID', width: 40 },
+    {
+      field: 'employee',
+      headerName: 'Pracownik',
+      width: 160,
+      valueGetter: (_, row) => {
+        return `${row.employee.name || ''} ${row.employee.lastname || ''}`;
+      },
+    },
+    { 
+      field: 'date',
+      headerName: 'Data',
+      type: 'number',
+      width: 180,
+      editable: true,
+    },
+    {
+      field: 'startTime',
+      headerName: 'Rozpoczęcie',
+      type: 'number',
+      width: 110,
+      editable: true,
+    },
+    {
+      field: 'endTime',
+      headerName: 'Zakończenie',
+      type: 'number',
+      width: 190,
+      editable: true,
+    },
+    {
+      field: 'breakTaken',
+      headerName: 'Wzięto przerwę',
+      type: 'number',
+      width: 160,
+      editable: true,
+      sortable: false,
+      valueGetter: (_, row) => {
+        return `${row.breakTaken ? "Tak" : "Nie"}`;
+      },
+    },
+    // {
+    //   field: 'actions',
+    //   headerName: 'Akcje',
+    //   width: 240,
+    //   sortable: false,
+    //   renderCell: (params: GridRenderCellParams<any, Date>) => (
+    //       <Chip 
+    //         icon={<MoreHoriz/>}
+    //         label={"Edytuj"}
+    //         color="default"
+    //         clickable
+    //       />
+    //   ),
+    // },
+  ];
 
   if (loading) {
     return (
@@ -108,212 +150,51 @@ const AttendanceList = () => {
   }
 
   return (
-    <Box sx={{ width: "100rem", mx: "8rem", mt: "3rem" }}>
-      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mb={2} gap={2}>
-        <Box display="flex" gap={2}>
-          {/* <TextField
-            placeholder="Search employee name"
-            variant="outlined"
-            size="small"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          /> */}
-
-          {/* <TextField
-            select
-            size="small"
-            label="Sex"
-            value={sexFilter}
-            onChange={(e) => setSexFilter(e.target.value)}
-          >
-            <MenuItem value="all">All</MenuItem>
-            <MenuItem value="M">Male</MenuItem>
-            <MenuItem value="F">Female</MenuItem>
-          </TextField> */}
-
-          <DatePicker label="Wybierz datę początkową" value={beginDate} onChange={(newValue) => setBeginDate(newValue)} />
-          <DatePicker label="Wybierz datę końcową" value={endDate} onChange={(newValue) => setEndDate(newValue)} />
-        </Box>
-        {/* <Chip label="Sprawdź historie" color="primary" clickable={true}/> */}
+    <Box sx={{ width: "100rem", mx: "8rem", mt: "3rem", justifyContent: "center" }}>
+      <Box display="flex" mb={2} gap={2} ml={"22.5rem"}>
+        <TextField
+          placeholder="Znajdź pracownika"
+          variant="outlined"
+          size="small"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon fontSize="small" />
+              </InputAdornment>
+            ),
+          }}
+        />
+        <DatePicker 
+          label="Wybierz datę początkową" 
+          value={beginDate} 
+          onChange={(newValue) => setBeginDate(newValue)} />
+        <DatePicker 
+          label="Wybierz datę końcową" 
+          value={endDate} 
+          onChange={(newValue) => setEndDate(newValue)} />
       </Box>
 
-      <TableContainer component={Paper} sx={{ mb: 2, minHeight: "300px", minWidth: "1050px" }}>
-        <Table>
-          <TableHead>
-            <TableRow >
-              <TableCell sx={{ fontWeight: "bold" }}>Pracownik</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Data</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Rozpoczęcie</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Zakończenie</TableCell>
-              {/* <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell> */}
-              <TableCell sx={{ fontWeight: "bold" }}>Przerwa</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Akcje</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {paginatedAttendance.map((record) => (
-              <TableRow key={record.id} hover>
-                <TableCell>
-                  <Box display="flex" alignItems="center">
-                    <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
-                      {record.employee.name.charAt(0)}
-                    </Avatar>
-                    <Typography>
-                      {record.employee.name} {record.employee.lastname}
-                    </Typography>
-                  </Box>
-                </TableCell>
-
-                <TableCell>
-                  {editedRowId === record.id ? (
-                    <DatePicker
-                      format="YYYY-MM-DD"
-                      value={dayjs(editValues?.date)}
-                      onChange={(newValue) => {
-                        if (newValue) {
-                          setEditValues((prev) => ({ ...prev!, date: newValue.toDate() }));
-                        }
-                      }}
-                    />
-                  ) : (
-                    new Date(record.date).toLocaleDateString()
-                  )}
-                </TableCell>
-
-                <TableCell>
-                  {editedRowId === record.id ? (
-                    <TextField
-                      variant="standard"
-                      value={editValues?.startTime || ""}
-                      onChange={(e) => setEditValues((prev) => ({ ...prev!, startTime: e.target.value }))}
-                    />
-                  ) : (
-                    record.startTime
-                  )}
-                </TableCell>
-
-                <TableCell>
-                  {editedRowId === record.id ? (
-                    <TextField
-                      variant="standard"
-                      value={editValues?.endTime || ""}
-                      onChange={(e) => setEditValues((prev) => ({ ...prev!, endTime: e.target.value }))}
-                    />
-                  ) : (
-                    record.endTime || "-"
-                  )}
-                </TableCell>
-
-                {/* <TableCell>
-                  {editedRowId === record.id ? (
-                    <TextField
-                      variant="standard"
-                      value={editValues?.status || ""}
-                      onChange={(e) => setEditValues((prev) => ({ ...prev!, status: e.target.value }))}
-                    />
-                  ) : (
-                    record.status || "-"
-                  )}
-                </TableCell> */}
-
-                <TableCell>
-                  {editedRowId === record.id ? (
-                    <TextField
-                    select
-                    variant="standard"
-                    value={editValues?.przerwa ? "true" : "false"}
-                    onChange={(e) =>
-                      setEditValues((prev) => ({
-                        ...prev!,
-                        przerwa: e.target.value === "true",
-                      }))
-                    }
-                  >
-                    <MenuItem value="true">Tak</MenuItem>
-                    <MenuItem value="false">Nie</MenuItem>
-                  </TextField>
-                  ) : (
-                    record.breakTaken ? "Tak" : "Nie"
-                  )}
-                </TableCell>
-
-
-                {/* Dodać to żeby to wysyłało PATCH request na backend */}
-                <TableCell>
-                  <Chip
-                    icon={<EditNote />}
-                    label={editedRowId === record.id ? "Zapisz" : "Edytuj"}
-                    clickable
-                    onClick={async () => {
-                      if (editedRowId === record.id) {
-                        try {
-                          const updatedData: AttendanceEditRequest = {
-                            date: editValues?.date,
-                            startTime: editValues?.startTime,
-                            endTime: editValues?.endTime,
-                            breakTaken: editValues?.przerwa,
-                          };
-                    
-                          await editAttendance(record.id, updatedData); // ✅ API call
-                    
-                          setRows((prev) =>
-                            prev.map((r) =>
-                              r.id === record.id
-                                ? {
-                                    ...r,
-                                    startTime: updatedData.startTime ?? r.startTime,  // fallback to old value
-                                    endTime: updatedData.endTime ?? r.endTime,
-                                    date: updatedData.date ?? r.date,
-                                    breakTaken: updatedData.breakTaken ?? r.breakTaken,
-                                  }
-                                : r
-                            )
-                          );
-                          
-                    
-                        } catch (err) {
-                          console.error("Failed to update attendance:", err);
-                        } finally {
-                          setEditedRowId(null);
-                          setEditValues(null);
-                        }
-                      } else {
-                        setEditedRowId(record.id);
-                        setEditValues({
-                          date: new Date(record.date),
-                          startTime: record.startTime,
-                          endTime: record.endTime || "",
-                          przerwa: record.breakTaken,
-                        });
-                      }
-                    }}
-                    
-                  />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Box sx={{ color: "white", '& .MuiTablePagination-root': { color: "white" }, '& .MuiSvgIcon-root': { color: "white" } }}>
-        <TablePagination
-          component="div"
-          count={filteredRows.length}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={[]} 
-        />
+      <Box display="flex" justifyContent="center" width={"55rem"} margin={"auto"}>
+        <DataGrid
+                  rows={filteredRows}
+                  columns={columns}
+                  initialState={{
+                    pagination: {
+                      paginationModel: {
+                        pageSize: 10,
+                      },
+                    },
+                  }}
+                  pageSizeOptions={[10]}
+                  checkboxSelection
+                  disableRowSelectionOnClick
+                  sx={{minHeight: "39rem"}}
+                />
       </Box>
     </Box>
+      
   );
 };
 

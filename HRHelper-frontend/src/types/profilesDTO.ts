@@ -71,6 +71,11 @@ export interface EmployeeRequest {
     // staż: number;
 }
 
+export interface EmployeeLeavesUpdateRequest {
+    dostępneDniUrlopu: number;
+    wykorzystaneDniUrlopu: number;
+}
+
 export interface EmployeeJobDetailsRequest {
     jobTitle: string;
     jobDescription: string;

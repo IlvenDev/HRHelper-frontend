@@ -1,4 +1,4 @@
-import { use, useEffect, useState } from "react";
+import React, { use, useEffect, useState } from "react";
 import {
   Box,
   Paper,
@@ -20,9 +20,16 @@ import {
   ListItemText,
   Collapse,
   ListItem,
+  Breadcrumbs,
+  Badge,
+  IconButton,
+  Button,
+  styled,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import { PieChart } from "@mui/x-charts/PieChart";
-import { ExpandLess, ExpandMore} from "@mui/icons-material";
+import {  ExpandLess, ExpandMore, MoreHoriz, Schedule, TrendingDown, TrendingUp} from "@mui/icons-material";
 import type { AttendanceTimeResponse } from "../types/attendanceDTO";
 import { getMissingAttendance, getTodayAttendance } from "../services/attendanceService";
 import type { EmployeeBasicResponse } from "../types/profilesDTO";
@@ -33,6 +40,8 @@ import type { LeaveResponse } from "../types/leavesDTO";
 import { DatePicker } from "@mui/x-date-pickers";
 import { downloadMonthlyPersonalSummaryPdf, downloadMonthlySummaryPdf, generateAllMonthlyReportsForEmployees, generateCompanyDetailedReportPdf } from "../raporting/raportingService";
 import { getEmployeeList } from "../services/profilesService";
+import { Link } from "react-router-dom";
+import { BarChart, useDrawingArea } from "@mui/x-charts";
 
 type HoursSummary = {
   regular: number;
@@ -52,42 +61,18 @@ type HoursSummary = {
   sickLeave: number;
 };
 
-const EMPLOYEES_PER_PAGE = 6;
-const ABSENCES_PER_PAGE = 5;
 const LEAVES_PER_PAGE = 5;
 
 const Dashboard = () => {
   const [loading, setLoading] = useState(true);
-
-  const [overtimeOpen, setOvertimeOpen] = useState(false);
-  const [paidLeavesOpen, setPaidLeaveOpen] = useState(false);
-  const [freeLeavesOpen, setFreeLeavesOpen] = useState(false);
-  const [specialLeavesOpen, setSpecialLeavesOpen] = useState(false);
 
   const [presentEmployees, setPresentEmployees] = useState<AttendanceTimeResponse[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveResponse[]>([]);
 
   const [absences, setAbsences] = useState<EmployeeBasicResponse[]>([]);
 
-  const [empPage, setEmpPage] = useState(1);
-  const [absPage, setAbsPage] = useState(1);
   const [leavePage, setLeavePage] = useState(1);
 
-  const handleOvertimeOpen =() => {
-    setOvertimeOpen(!overtimeOpen)
-  }
-
-  const handlePaidLeavesOpen = () => {
-    setPaidLeaveOpen(!paidLeavesOpen)
-  }
-
-  const handleFreeLeavesOpen = () => {
-    setFreeLeavesOpen(!freeLeavesOpen)
-  }
-
-  const handleSpecialLeavesOpen = () =>{
-    setSpecialLeavesOpen(!specialLeavesOpen)
-  }
 
   const loadPresentEmployees = async () => {
       try {
@@ -145,73 +130,42 @@ const Dashboard = () => {
     leaveCarer: 0,
     sickLeave: 0,
   });
-  
-
-  const pagedEmployees = presentEmployees.slice(
-    (empPage - 1) * EMPLOYEES_PER_PAGE,
-    empPage * EMPLOYEES_PER_PAGE
-  );
-
-  // const filteredAbsences = absences.filter(a => a. > 2 && !a.excused);
-
-  const pagedAbsences = absences.slice(
-    (absPage - 1) * ABSENCES_PER_PAGE,
-    absPage * ABSENCES_PER_PAGE
-  )
 
   const pagedLeaves = leaveRequests.slice(
     (leavePage - 1) * LEAVES_PER_PAGE,
     leavePage * LEAVES_PER_PAGE
   );
 
-  const [selectedDate, setSelectedDate] = useState<Dayjs>(dayjs);
+  const [selectedDate, setSelectedDate] = useState<Dayjs | null>(dayjs);
 
   useEffect(() => {
-    (async () => {
+    const fetchSummary = async () => {
       try {
-        // pobieramy np. czerwiec 2025, z dwoma świętami
-        const summary = await getMonthlySummary(2025, 6, [
-          "2025-06-01",
-          "2025-06-15",
-        ]);
-        setHoursSummary(summary);
+        const year = selectedDate.year();
+        const month = selectedDate.month() + 1;
+        const days = [
+          `${year}-${String(month).padStart(2, "0")}-01`,
+          `${year}-${String(month).padStart(2, "0")}-15`,
+        ];
+  
+        const summary = await getMonthlySummary(year, month, days);
+        setHoursSummary(summary); // updates async
       } catch (e) {
         console.error(e);
-      } finally {
-        setLoading(false);
       }
-    })();
-  }, []);
+    };
+  
+    fetchSummary();
+  }, [selectedDate]);
+
+  const [totalHours, setTotalHours] = useState<number>(Object.values(hoursSummary).reduce((sum, val) => sum + val, 0));
 
   useEffect(() => {
-      const fetchSummary = async () => {
-        setLoading(true);
-        try {
-          const year = selectedDate.year();
-          const month = selectedDate.month() + 1; // JS: 0-based
-          const days = [
-            `${year}-${String(month).padStart(2, "0")}-01`,
-            `${year}-${String(month).padStart(2, "0")}-15`,
-          ];
-    
-          const summary = await getMonthlySummary(
-            year,
-            month,
-            days
-          );
-    
-          setHoursSummary(summary);
-        } catch (e) {
-          console.error(e);
-        } finally {
-          setLoading(false);
-        }
-      };
-    
-      fetchSummary();
-    }, [selectedDate]);
+    const total = Object.values(hoursSummary).reduce((sum, val) => sum + val, 0);
+    setTotalHours(total);
+  }, [hoursSummary]);
 
-  const [selectedRaportDate, setSelectedRaportDate] = useState<Dayjs>(dayjs())
+ 
 
   const handleGenerateMonthlySummaryReport = async () => {
     // const employees = await getEmployeeList();
@@ -227,8 +181,8 @@ const Dashboard = () => {
 
   const handleGenerateCompanySummaryReport = async () => {
       const employees = await getEmployeeList();
-      const year = selectedRaportDate.year();
-      const month = selectedRaportDate.month() + 1;
+      const year = selectedDate.year();
+      const month = selectedDate.month() + 1;
       const days = [
         `${year}-${String(month).padStart(2, "0")}-01`,
         `${year}-${String(month).padStart(2, "0")}-15`,
@@ -259,7 +213,89 @@ const Dashboard = () => {
         console.error("Nie udało się wygenerować raportów szczegółowych:", error);
       }
     };
+
+    const labelMap: Record<keyof HoursSummary, string> = {
+      regular: "Normalne",
+      overtimeDay: "Nadgodziny dzienne",
+      overtimeNight: "Nadgodziny nocne",
+      overtimeHoliday: "Świąteczne",
+      leaveVacation: "Urlop wypoczynkowy",
+      leaveUnpaid: "Urlop bezpłatny",
+      leaveCircumstance: "Urlop okolicznościowy",
+      leavePregnant: "Macierzyński",
+      leaveParental: "Wychowawczy",
+      leaveTraining: "Szkoleniowy",
+      leaveHigherPower: "Siła wyższa",
+      leaveJobSearch: "Poszukiwanie pracy",
+      leaveBlood: "Oddanie krwi",
+      leaveCarer: "Opiekuńczy",
+      sickLeave: "Chorobowe",
+    };
     
+    const barChartData = Object.entries(hoursSummary).map(([key, value]) => ({
+      label: labelMap[key as keyof HoursSummary] || key,
+      value,
+    }));
+    
+    const StyledText = styled('text')(({ theme }) => ({
+      fill: theme.palette.text.primary,
+      textAnchor: 'middle',
+      dominantBaseline: 'central',
+      fontSize: 20,
+    }));
+    
+    function PieCenterLabel({ selected}: { selected: string[] | undefined}) {
+      const { width, height, left, top } = useDrawingArea();
+      return (
+        <>
+          <StyledText x={left + width / 2} y={top + height / 2.3} fontWeight={"bold"} sx={{fontSize: "1rem", overflow: "auto", maxWidth: "1rem"}}>
+            {selected[0]}
+          </StyledText>
+          <StyledText x={left + width / 2} y={top + height / 1.8} sx={{fontSize: "2rem"}}>
+            {selected[1]}
+          </StyledText>
+        </>
+      );
+    }
+
+    const [selectedSlice, setSelectedSlice] = useState(["Suma", totalHours.toString()]);
+
+    useEffect(() => {
+      setSelectedSlice(["Suma", totalHours.toString()]);
+    }, [totalHours]);    
+
+    const pieData = [
+      { id: 0, value: hoursSummary.regular, label: 'Normalne' },
+      { id: 1, value: hoursSummary.overtimeDay, label: 'Nadgodziny dzienne' },
+      { id: 2, value: hoursSummary.overtimeNight, label: 'Nadgodziny nocne' },
+      { id: 3, value: hoursSummary.overtimeHoliday, label: 'Nadgodziny świąteczne' },
+      { id: 4, value: hoursSummary.leaveVacation, label: 'Urlop wypoczynkowy' },
+      { id: 5, value: hoursSummary.leaveUnpaid, label: 'Urlop bezpłatny' },
+      { id: 6, value: hoursSummary.leaveCircumstance, label: 'Urlop okolicznościowy' },
+      { id: 7, value: hoursSummary.leavePregnant, label: 'Urlop macierzyński' },
+      { id: 8, value: hoursSummary.leaveParental, label: 'Urlop wychowawczy' },
+      { id: 9, value: hoursSummary.leaveTraining, label: 'Urlop szkoleniowy' },
+      { id: 10, value: hoursSummary.leaveHigherPower, label: 'Siła wyższa' },
+      { id: 11, value: hoursSummary.leaveJobSearch, label: 'Poszukiwanie pracy' },
+      { id: 12, value: hoursSummary.leaveBlood, label: 'Oddanie krwi' },
+      { id: 13, value: hoursSummary.leaveCarer, label: 'Opiekuńczy' },
+      { id: 14, value: hoursSummary.sickLeave, label: 'Urlop chorobowy' },
+    ];
+
+    const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const open = Boolean(anchorEl);
+    const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+      setAnchorEl(event.currentTarget);
+    };
+    const handleClose = () => {
+      setAnchorEl(null);
+    };
+
+  const calculateLeaveDays = (start: Date, end: Date): number => {
+    const oneDay = 1000 * 60 * 60 * 24;
+    const diffInMs = new Date(end).getTime() - new Date(start).getTime();
+    return Math.floor(diffInMs / oneDay) + 1; // +1, jeśli chcesz, żeby np. 1-1 = 1 dzień
+  };
 
   if (loading) {
     return (
@@ -271,328 +307,231 @@ const Dashboard = () => {
 
   return (
     <Box sx={{width: '100rem', mx: '8rem', mt: '3rem' }}>
+      <Breadcrumbs>
+        <Link color="inherit" to={"/"}>
+          Dashboard
+        </Link>
+        <Typography sx={{ color: 'text.primary' }}>Home</Typography>
+      </Breadcrumbs>
+      <Box display="flex" justifyContent="space-between" alignItems="center" pb={2}>
+        <Typography align="left" variant="h3">
+          {"Witaj z powrotem! Dzisiaj jest " + dayjs().date() + " " + dayjs().format('MMMM')}
+        </Typography>
+        <Stack direction={"row"} spacing={2}>
+          <DatePicker
+            views={['year', 'month']}
+            label="Wybierz miesiąc"
+            minDate={dayjs('2025-01-01')}
+            maxDate={dayjs()}
+            value={selectedDate}
+            onChange={(newValue) => {
+              setSelectedDate(newValue);
+            }}
+            slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
+          />
+        </Stack>
+      </Box>
       <Grid container rowSpacing={2} columnSpacing={2} minHeight={'40rem'}>
-        {/* Obecni pracownicy */}
         <Grid size={6}>
           <Stack spacing={2}>
-            <Paper sx={{ p: 3, minHeight: '16rem'}}>
-              <Typography variant="h6">Obecni pracownicy (dziś)</Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Table size="small">
-                <TableHead>
-                  <TableRow>
-                    <TableCell>Pracownik</TableCell>
-                    <TableCell>Status</TableCell>
-                    <TableCell>Rozpoczęto</TableCell>
-                    <TableCell>Zakończono</TableCell>
-                  </TableRow>
-                </TableHead>
-                <TableBody>
-                  {pagedEmployees.map((emp) => (
-                    <TableRow key={emp.id}>
-                      
-                      <TableCell>
-                        <Stack direction="row" spacing={1.5} alignItems="center">
-                          <Chip 
-                          avatar={<Avatar>{emp.employee.name.charAt(0)}</Avatar>}
-                          label={emp.employee.name + " " + emp.employee.lastname}
-                          />
-                        </Stack>  
-                      </TableCell>
-                      <TableCell>
-                      <Chip
-                        label={
-                          emp.startTime == null
-                            ? "Nieobecny"
-                            : emp.endTime != null
-                              ? "Po pracy"
-                              : "Obecny"
-                        }
-                        color={
-                          emp.startTime == null
-                            ? "default"
-                            : emp.endTime != null
-                              ? "primary"
-                              : emp.breakTaken
-                                ? "warning"
-                                : "success"
-                        }
-                        size="small"
-                      />
-                      </TableCell>
-                      <TableCell>{emp.startTime}</TableCell>
-                      <TableCell>{emp.endTime}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              <Box display="flex" justifyContent="center" mt={2}>
-                <Pagination
-                  count={Math.ceil(presentEmployees.length / EMPLOYEES_PER_PAGE)}
-                  page={empPage}
-                  onChange={(_, val) => setEmpPage(val)}
-                  size="small"
-                />
-              </Box>
-            </Paper>
-            <Paper sx={{ p: 3, minHeight: '23rem', maxHeight: '23rem' }}>
-              <Typography variant="h6">Ostatnie nieobecności</Typography>
-              <Divider sx={{ mb: 2 }} />
-              {absences.length === 0 ? (
-                <Typography variant="body2">Brak nieusprawiedliwionych nieobecności powyżej 2 dni.</Typography>
-              ) : (
-                <Table size="small">
-                  <TableHead>
-                    <TableRow>
-                      <TableCell>Pracownik</TableCell>
-                      {/* <TableCell>Ilość dni</TableCell> */}
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {pagedAbsences
-                      .map(a => (
-                        <TableRow key={a.id}>
-                          <TableCell>
-                            <Chip 
-                              avatar={<Avatar>{a.name.charAt(0)}</Avatar>}
-                              label={a.name + " " + a.lastname}
-                            />
-                          </TableCell>
-                        </TableRow>
+              <Grid container spacing={2}>
+                <Grid size={6}>
+                  <Paper sx={{ minHeight: "15rem", borderRadius: 4}} elevation={2}>
+                    <Box display={"flex"}>
+                      <Typography variant="h5" sx={{mt: 2, ml: 2, mb: 1}}>{`Obecni pracownicy: ${presentEmployees.length} / ${presentEmployees.length+absences.length}`}</Typography>
+                    </Box>
+                    <Divider />
+                    <Stack overflow={"auto"} maxHeight={"15rem"}>
+                      {presentEmployees.map((attendance) => (
+                        <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, mt: 2 }}>
+                          <Badge 
+                            color="success" 
+                            variant="dot" 
+                            overlap="circular"
+                            anchorOrigin={{
+                              vertical: 'bottom',
+                              horizontal: 'right',
+                            }}
+                          >
+                            <Avatar>
+                              N
+                            </Avatar>
+                          </Badge>
+                          <Typography ml={2} variant="h6">
+                            {attendance.employee.name + " " + attendance.employee.lastname}
+                          </Typography>
+                        </Box>
                       ))}
-                  </TableBody>
-                </Table>
-              )}
-              <Box display="flex" justifyContent="center" mt={2}>
-                <Pagination
-                  count={Math.ceil(absences.length / ABSENCES_PER_PAGE)}
-                  page={absPage}
-                  onChange={(_, val) => setAbsPage(val)}
-                  size="small"
-                />
-              </Box>
-            </Paper>
-            <Paper sx={{ p: 3, minHeight: '5rem'}}>
-              <Typography variant="h6" sx={{mb: 2}}>Raporty osobowe</Typography>
-              <Stack direction={"row"} spacing={3} sx={{mb: 2}}>
-                <DatePicker
-                  views={['year', 'month']}
-                  label="Wybierz miesiąc"
-                  minDate={dayjs('2022-01-01')}
-                  maxDate={dayjs()}
-                  value={selectedRaportDate}
-                  onChange={(newValue) => {
-                    if (newValue) setSelectedRaportDate(newValue);
-                  }}
-                  slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
-                />
-                <Chip
-                  label="Stwórz raport summaryczny"
-                  onClick={handleGenerateCompanySummaryReport}
-                  color="primary"
-                  clickable
-                />
-                <Chip
-                  label="Stwórz raport chronologiczny"
-                  onClick={handleGenerateDetailedReports}
-                  color="secondary"
-                  clickable
-                />
-              </Stack>
-            </Paper>
+                      
+                    </Stack>
+                  </Paper>
+                </Grid>
+                <Grid size={6}>
+                <Paper sx={{ minHeight: "15rem", borderRadius: 4}} elevation={2}>
+                  <Box display={"flex"}>
+                    <Typography variant="h5" sx={{mt: 2, ml: 2, mb: 1}}>{`Nieobecni pracownicy: ${absences.length} / ${presentEmployees.length+absences.length}`}</Typography>
+                  </Box>
+                  <Divider />
+                  <Stack overflow={"auto"} maxHeight={"15rem"}>
+                    {absences.map((absence) => (
+                      <Box sx={{ display: 'flex', alignItems: 'center', ml: 2, mt: 2 }}>
+                      <Badge 
+                        color="error" 
+                        variant="dot" 
+                        overlap="circular"
+                        anchorOrigin={{
+                          vertical: 'bottom',
+                          horizontal: 'right',
+                        }}
+                      >
+                        <Avatar>
+                          {absence.name.charAt(0) + absence.lastname.charAt(0)}
+                        </Avatar>
+                      </Badge>
+                      <Typography ml={2} variant="h6">
+                        {absence.name + " " + absence.lastname}
+                      </Typography>
+                    </Box>
+                    ))}
+                    
+                  </Stack>
+                </Paper>
+                </Grid>
+              </Grid>
+              <Paper sx={{minHeight: "18rem", overflow: "auto", borderRadius: 4}} elevation={2}>
+                  <Box display={"flex"} justifyContent={"space-between"} sx={{mb: 2, m: 3}}>
+                    <Typography variant="h6">Szczegóły godzin</Typography>
+                    <Box display="flex" justifyContent="flex-end">
+                      <IconButton 
+                        type="button" 
+                        onClick={handleClick}>
+                        <MoreHoriz />
+                      </IconButton>
+                      <Menu
+                        id="hours-details-menu"
+                        anchorEl={anchorEl}
+                        anchorOrigin={{
+                          vertical: "bottom",
+                          horizontal:"left",
+                        }}
+                        open={open}
+                        onClose={handleClose}
+                      >
+                        <MenuItem onClick={handleGenerateCompanySummaryReport}>Stwórz raport osobowy</MenuItem>
+                        <MenuItem onClick={handleGenerateMonthlySummaryReport}>Stwórz raport sumaryczny</MenuItem>
+                        <MenuItem onClick={handleGenerateDetailedReports}>Stwórz raport chronologiczny</MenuItem>
+                      </Menu>
+                    </Box>
+                  </Box>
+                  <Divider sx={{ mb: 2 }} />
+                  <BarChart
+                    layout="horizontal"
+                    yAxis={[{ scaleType: 'band', dataKey: 'label' }]} // Labels on Y-axis now
+                    xAxis={[{ scaleType: 'linear' }]}                 // Values on X-axis
+                    series={[{ dataKey: 'value', label: 'Ilość' }]}
+                    dataset={barChartData}
+                    hideLegend={true}
+                    width={800}
+                    height={600}
+                  />
+                </Paper>
           </Stack>
         </Grid>
-
-        {/* Podsumowanie godzin | może warto dodać przycisk (profil) gdzie wrzuca na jego profil z danymi*/}
         <Grid size={6}>
           <Stack spacing={2} >
-            <Grid container rowSpacing={2}>
-              <Grid size={12}>
-                <Paper sx={{ p: 3, minHeight: "18rem", maxHeight: "18rem", overflow: "auto"}}>
-                  <Stack direction={"row"} spacing={3} sx={{mb: 2}}>
-                    <Typography variant="h6">Szczegóły godzin</Typography>
-                    <DatePicker
-                      views={['year', 'month']}
-                      label="Wybierz miesiąc"
-                      minDate={dayjs('2022-01-01')}
-                      maxDate={dayjs()}
-                      value={selectedDate}
-                      onChange={(newValue) => {
-                        if (newValue) setSelectedDate(newValue);
-                      }}
-                      slotProps={{ textField: { size: 'small', sx: { mb: 2 } } }}
-                    />
-                    <Chip
-                      label="Stwórz raport"
-                      onClick={handleGenerateMonthlySummaryReport}
-                      color="primary"
-                      clickable
-                    />
+            <Grid container spacing={2}>
+              <Grid size={6}>
+                <Paper sx={{ minHeight: "10rem", borderRadius: 4}} elevation={2}>
+                  <Stack textAlign={"left"}>
+                    <Typography variant="h5" sx={{mt: 2, ml: 2}}>Średnie godziny</Typography>
+                    <Typography variant="h3" sx={{mt: 1, ml: 2, mb: 1}}>37</Typography>
                   </Stack>
-                  <Divider sx={{ mb: 2 }} />
-                    <ListItem>
-                      <ListItemText primary="Wszystkie"/>
-                      <Typography>{Object.values(hoursSummary).reduce((sum, val) => sum + val, 0)}</Typography>
-                    </ListItem>
-                    <ListItem>
-                      <ListItemText primary="Normalne"/>
-                      <Typography>{hoursSummary.regular}</Typography>
-                    </ListItem>
-                    <ListItemButton onClick={handleOvertimeOpen}>
-                      <ListItemText primary="Nadgodziny" />
-                      {overtimeOpen ? <ExpandLess /> : <ExpandMore />}
-                    </ListItemButton>
-                    <Collapse in={overtimeOpen} timeout="auto" unmountOnExit>
-                      <List component="div" disablePadding>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Dzienne" />
-                          <Typography>{hoursSummary.overtimeDay}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Nocne" />
-                          <Typography>{hoursSummary.overtimeNight}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Święta i niedziele" />
-                          <Typography>{hoursSummary.overtimeHoliday}</Typography>
-                        </ListItem>
-                      </List>
-                    </Collapse>
-                    <ListItemButton onClick={handlePaidLeavesOpen}>
-                      <ListItemText primary="Urlopy płatne" />
-                      {paidLeavesOpen ? <ExpandLess /> : <ExpandMore />}
-                    </ListItemButton>
-                    <Collapse in={paidLeavesOpen} timeout="auto" unmountOnExit>
-                      <List component="div" disablePadding>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Wypoczynkowe" />
-                          <Typography>{hoursSummary.leaveVacation}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Chorobowe" />
-                          <Typography>{hoursSummary.sickLeave}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Okolicznościowe" />
-                          <Typography>{hoursSummary.leaveCircumstance}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Szkoleniowe" />
-                          <Typography>{hoursSummary.leaveTraining}</Typography>
-                        </ListItem>
-                      </List>
-                    </Collapse>
-                    <ListItemButton onClick={handleFreeLeavesOpen}>
-                      <ListItemText primary="Urlopy bezpłatne" />
-                      {freeLeavesOpen ? <ExpandLess /> : <ExpandMore />}
-                    </ListItemButton>
-                    <Collapse in={freeLeavesOpen} timeout="auto" unmountOnExit>
-                      <List component="div" disablePadding>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Bezpłatny" />
-                          <Typography>{hoursSummary.leaveUnpaid}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Wychowawczy" />
-                          <Typography>{hoursSummary.leaveParental}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Macierzyński" />
-                          <Typography>{hoursSummary.leavePregnant}</Typography>
-                        </ListItem>
-                      </List>
-                    </Collapse>
-                    <ListItemButton onClick={handleSpecialLeavesOpen}>
-                      <ListItemText primary="Urlopy specjalne" />
-                      {specialLeavesOpen ? <ExpandLess /> : <ExpandMore />}
-                    </ListItemButton>
-                    <Collapse in={specialLeavesOpen} timeout="auto" unmountOnExit>
-                      <List component="div" disablePadding>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Na poszukiwanie pracy" />
-                          <Typography>{hoursSummary.leaveJobSearch}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Oddanie krwi" />
-                          <Typography>{hoursSummary.leaveBlood}</Typography>
-                        </ListItem>
-                        <ListItem sx={{ pl: 4 }}>
-                          <ListItemText primary="Siła wyższa" />
-                          <Typography>{hoursSummary.leaveHigherPower}</Typography>
-                        </ListItem>
-                      </List>
-                    </Collapse>
-                    <ListItem>
-                      <ListItemText primary="Opiekuńczy"/>
-                      <Typography>{hoursSummary.leaveCarer}</Typography>
-                    </ListItem>
+                  {/* <Divider />
+                  <Box display={"flex"} mt={1} >
+                    <TrendingDown sx={{marginInline: 2}} color= "error"/>
+                    <Typography color="error">13% upadek vs ostatni miesiąc</Typography> 
+                  </Box> */}
                 </Paper>
-
-                {/* regular: 602,
-        leavePregnant: 36,
-        leaveParental: 52,
-        leaveTraining: 12,
-        leaveHigherPower: 8,
-        leaveJobSearch: 25,
-        leaveBlood: 5,
-        leaveCarer: 16,
-        sickLeave: 214, */}
               </Grid>
+              <Grid size={6}>
+              <Paper sx={{ minHeight: "10rem", borderRadius: 4}} elevation={2}>
+                  <Stack textAlign={"left"}>
+                    <Typography variant="h5" sx={{mt: 2, ml: 2}}>Nowi pracownicy</Typography>
+                    <Typography variant="h3" sx={{mt: 1, ml: 2, mb: 1}}>12</Typography>
+                  </Stack>
+                  {/* <Divider />
+                  <Box display={"flex"} mt={1} >
+                    <TrendingUp sx={{marginInline: 2}} color= "success"/>
+                    <Typography color="success">27% wzrost vs ostatni miesiąc</Typography> 
+                  </Box> */}
+                </Paper>
+              </Grid>
+              {/* <Grid size={12}>
+                <Paper sx={{ minHeight: "15rem", maxHeight: "15rem", borderRadius: 4, overflow: "auto"}} elevation={2} >
+                  <Paper elevation={4} sx={{display: "flex", m: 1, borderRadius: 4}}>
+                    <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                      <Schedule />
+                    </Avatar>  
+                    <Typography variant="h5" sx={{mt: 2, ml: 2}}>Alert</Typography>
+                  </Paper>
+                  <Paper elevation={4} sx={{display: "flex", m: 1, borderRadius: 4}}>
+                    <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                      <Schedule />
+                    </Avatar>  
+                    <Typography variant="h5" sx={{mt: 2, ml: 2}}>Alert</Typography>
+                  </Paper>
+                  <Paper elevation={4} sx={{display: "flex", m: 1, borderRadius: 4}}>
+                    <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                      <Schedule />
+                    </Avatar>  
+                    <Typography variant="h5" sx={{mt: 2, ml: 2}}>Alert</Typography>
+                  </Paper>
+                  <Paper elevation={4} sx={{display: "flex", m: 1, borderRadius: 4}}>
+                    <Avatar sx={{width: 30, height: 30, boxShadow: 4, ml: 2, mt: 2, mb: 2}}>
+                      <Schedule />
+                    </Avatar>  
+                    <Typography variant="h5" sx={{mt: 2, ml: 2}}>Alert</Typography>
+                  </Paper>
+                </Paper>
+              </Grid>             */}
+      
               <Grid size={12}>
-                <Paper sx={{ p: 3, minHeight: "37rem" }}>
-                  <Typography variant="h6">Rozkład godzin</Typography>
+                <Paper sx={{minHeight: "37rem", borderRadius: 4}} elevation={2}>
+                  <Typography variant="h5" align="left" sx={{ml: 2, pt: 1, mb: 1}}>Rozkład godzin</Typography>
                   <Divider sx={{ mb: 2 }} />
                   <PieChart
+                    sx={{mt: 8}}
                     series={[
                       {
-                        data: [
-                          { id: 0, value: hoursSummary.regular, label: 'Normalne' },
-                          { id: 1, value: hoursSummary.overtimeDay, label: 'Nadgodziny dzienne' },
-                          { id: 2, value: hoursSummary.overtimeNight, label: 'Nadgodziny nocne' },
-                          { id: 3, value: hoursSummary.overtimeHoliday, label: 'Nadgodziny świąteczne' },
-                          { id: 4, value: hoursSummary.leaveVacation, label: 'Urlop wypoczynkowy' },
-                          { id: 5, value: hoursSummary.leaveUnpaid, label: 'Urlop bezpłatny' },
-                          { id: 6, value: hoursSummary.leaveCircumstance, label: 'Urlop okolicznościowy' },
-                          { id: 7, value: hoursSummary.leavePregnant, label: 'Urlop macierzyński' },
-                          { id: 8, value: hoursSummary.leaveParental, label: 'Urlop wychowawczy' },
-                          { id: 9, value: hoursSummary.leaveTraining, label: 'Urlop szkoleniowy' },
-                          { id: 10, value: hoursSummary.leaveHigherPower, label: 'Siła wyższa' },
-                          { id: 11, value: hoursSummary.leaveJobSearch, label: 'Poszukiwanie pracy' },
-                          { id: 12, value: hoursSummary.leaveBlood, label: 'Oddanie krwi' },
-                          { id: 13, value: hoursSummary.leaveCarer, label: 'Opiekuńczy' },
-                          { id: 14, value: hoursSummary.sickLeave, label: 'Urlop chorobowy' },
-                        ],
+                        data: pieData,
                         highlightScope: { fade: 'global', highlight: 'item' },
-                        faded: { innerRadius: 30, additionalRadius: -30, color: 'gray' },
+                        faded: { color: 'gray' },
+                        innerRadius: 120,
                         valueFormatter: (value) => {
                           const total = Object.values(hoursSummary).reduce((sum, val) => sum + val, 0);
                           return `${((value.value/total)*100).toFixed(1)}%`
                         },
-
-                        // arcLabel: (item) => {
-                        //   const total = Object.values(hoursSummary).reduce((sum, val) => sum + val, 0);
-                        //   if (total === 0) return '0%';
-                        //   const percent = (item.value / total) * 100;
-                        //   return `${percent.toFixed(1)}%`;
-                        // },
-
                       },
                     ]}
+            
+                    hideLegend={true}
                     width={400}
-                    height={250}
-                  />
-
+                    height={400}
+                    onHighlightChange={(highlightedItem) => {
+                      if (highlightedItem) {
+                        setSelectedSlice([pieData[highlightedItem.dataIndex]?.label, pieData[highlightedItem.dataIndex]?.value]);
+                      } else {
+                        setSelectedSlice(["Suma", totalHours.toString()]);
+                      }
+                    }}
+                  >
+                    <PieCenterLabel selected={selectedSlice} />
+                  </PieChart>
                 </Paper>
               </Grid>
-            </Grid>
-            
-          </Stack>
-        </Grid>
-
-        {/* Wnioski urlopowe */}
-        <Grid size={12}>
-          <Paper sx={{ p: 3, minHeight: 280 }}>
-            <Typography variant="h6">Wnioski urlopowe wymagające uwagi</Typography>
+              <Grid size={12}>
+          <Paper sx={{minHeight: 280, borderRadius: 4 }} elevation={2}>
+            <Typography variant="h6" align="left" sx={{ml: 2, pt: 1, mb: 1}}>Wnioski urlopowe wymagające uwagi</Typography>
             <Divider sx={{ mb: 2 }} />
             {leaveRequests.length === 0 ? (
               <Typography variant="body2">Brak oczekujących wniosków.</Typography>
@@ -601,30 +540,27 @@ const Dashboard = () => {
                 <Table size="small">
                   <TableHead>
                     <TableRow>
-                      <TableCell>Pracownik</TableCell>
-                      <TableCell>Rodzaj</TableCell>
-                      <TableCell>Złożono</TableCell>
-                      <TableCell>Status</TableCell>
+                      <TableCell sx={{fontWeight: "bold"}}>Pracownik</TableCell>
+                      <TableCell sx={{fontWeight: "bold"}}>Rodzaj</TableCell>
+                      <TableCell sx={{fontWeight: "bold"}}>Złożono</TableCell>
+                      <TableCell sx={{fontWeight: "bold"}}>Długość</TableCell>
+                      {/* <TableCell sx={{fontWeight: "bold"}}>Akcje</TableCell> */}
                     </TableRow>
                   </TableHead>
                   <TableBody>
                     {pagedLeaves.map((req) => (
                       <TableRow key={req.id}>
-                        <TableCell>
-                          <Chip 
-                            avatar={<Avatar>{req.employee.name.charAt(0)}</Avatar>}
-                            label={req.employee.name}
-                          />
-                        </TableCell>
+                        <TableCell>{req.employee.name + " " + req.employee.lastname}</TableCell>
                         <TableCell>{req.rodzaj}</TableCell>
                         <TableCell>{new Date(req.złożono).toLocaleDateString()}</TableCell>
-                        <TableCell>
+                        <TableCell>{calculateLeaveDays(req.dataStart, req.dataKoniec)}</TableCell>
+                        {/* <TableCell>
                           <Chip 
-                            label="Potrzebna akcja" 
-                            color="warning" 
+                            label="Przejdź do" 
+                            color="primary" 
                             size="small" 
                             clickable/>
-                        </TableCell>
+                        </TableCell> */}
                       </TableRow>
                     ))}
                   </TableBody>
@@ -641,6 +577,10 @@ const Dashboard = () => {
             )}
           </Paper>
         </Grid>
+            </Grid>
+          </Stack>
+        </Grid>
+        
       </Grid>
     </Box>
   );

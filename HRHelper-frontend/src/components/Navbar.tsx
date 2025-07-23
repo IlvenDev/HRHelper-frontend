@@ -24,11 +24,14 @@ const Navbar = ({ onLogout }) => {
         {/* Left side */}
         <Box display="flex" alignItems="center" gap={4}>
           <Typography variant="h6">HRHelper</Typography>
-          <Button color="inherit" component={RouterLink} to={role === "HR" ? "/dashboard" : "/personal-panel"}>
-            Dashboard
+          <Button color="inherit" component={RouterLink} to={"/personal-panel"}>
+            Panel personalny
           </Button>
           {role === "HR" && (
             <>
+              <Button color="inherit" component={RouterLink} to={"/dashboard"}>
+                Dashboard
+              </Button>
               <Button color="inherit" component={RouterLink} to="/employees">
                 Pracownicy
               </Button>

@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import {
   Avatar,
   Box,
+  Button,
   Chip,
   CircularProgress,
   InputAdornment,
   MenuItem,
   Paper,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -20,11 +22,12 @@ import SearchIcon from "@mui/icons-material/Search";
 import { DatePicker } from "@mui/x-date-pickers";
 import type { Dayjs } from "dayjs";
 import dayjs from "dayjs";
-import { Check, DoNotDisturb } from "@mui/icons-material";
+import { Check, Done, DoNotDisturb, MoreHoriz } from "@mui/icons-material";
 import { getAllLeaves, changeStatus } from "../../../services/leavesService"; // import changeStatus
 import type { LeaveResponse } from "../../../types/leavesDTO";
-import type { EmployeeBasicResponse } from "../../../types/profilesDTO";
+import type { EmployeeBasicResponse, EmployeeLeavesUpdateRequest } from "../../../types/profilesDTO";
 import { updateEmployee, updateLeaveDays } from "../../../services/profilesService";
+import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 
 const LeavesList = () => {
   const [rows, setRows] = useState<LeaveResponse[]>([]);
@@ -55,9 +58,9 @@ const LeavesList = () => {
     try {
       await changeStatus(leaveId, newStatus);
       if(newStatus == "ZATWIERDZONE") {
-        const payload = {
+        const payload: EmployeeLeavesUpdateRequest = {
           dostępneDniUrlopu: employee.dostępneDniUrlopu-length,
-          wykorzystaneDniUrlopu: length,
+          wykorzystaneDniUrlopu: employee.wykorzystaneDniUrlopu+length,
         }
         await updateLeaveDays(employee.id, payload)
       }
@@ -89,18 +92,120 @@ const LeavesList = () => {
     const diffInMs = new Date(end).getTime() - new Date(start).getTime();
     return Math.floor(diffInMs / oneDay) + 1; // +1, jeśli chcesz, żeby np. 1-1 = 1 dzień
   };
-  
-  const [page, setPage] = useState(0);
-  const rowsPerPage = 10;
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  }
 
-  const paginatedLeaves = filteredRows.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
+  const columns: GridColDef<(typeof filteredRows)[number]>[] = [
+    // { field: 'id', headerName: 'ID', width: 40 },
+    {
+      field: 'employee',
+      headerName: 'Pracownik',
+      width: 160,
+      valueGetter: (_, row) => {
+        return `${row.employee.name || ''} ${row.employee.lastname || ''}`;
+      },
+    },
+    {
+      field: 'dataStart',
+      headerName: 'Okres',
+      type: 'number',
+      width: 180,
+      editable: true,
+      valueGetter: (_, row) => {
+        return `${new Date(row.dataStart).toLocaleDateString() || ' '} - ${new Date(row.dataKoniec).toLocaleDateString() || ''}`
+      }
+    },
+    {
+      field: 'czasTrwania',
+      headerName: 'Czas trwania',
+      width: 130,
+      valueGetter: (_, row) => {
+        const { dataStart, dataKoniec } = row; 
+        if (!dataStart || !dataKoniec) return '-';
+        return `${calculateLeaveDays(dataStart, dataKoniec)} dni`; // Return a string or number
+      },
+    },
+    {
+      field: 'rodzaj',
+      headerName: 'Rodzaj',
+      type: 'number',
+      width: 190,
+      editable: true,
+    },
+    {
+      field: 'status',
+      headerName: 'Status',
+      type: 'number',
+      width: 160,
+      editable: true,
+      renderCell: (params: GridRenderCellParams<any, Date>) => {
+        const status = params.row.status;
+
+        return (
+        <Chip 
+          color={status === "OCZEKUJĄCE" ? "warning" : status === "ZATWIERDZONE" ? "success" : "error"}
+          size="small"
+          label={status}
+          tabIndex={params.hasFocus ? 0 : -1}
+        />
+      )},
+    },
+    {
+      field: 'złożono',
+      headerName: 'Złożono',
+      type: 'number',
+      width: 140,
+      editable: true,
+    },
+    {
+      field: 'dostępneDniUrlopu',
+      headerName: 'Dostępne dni urlopu',
+      type: 'number',
+      width: 200,
+      editable: true,
+      valueGetter: (_, row) => {
+        return `${row.employee.dostępneDniUrlopu || ''}`;
+      },
+    },
+    {
+      field: 'actions',
+      headerName: 'Akcje',
+      width: 240,
+      sortable: false,
+      filterable: false,
+      renderCell: (params: GridRenderCellParams<any, Date>) => {
+        const status = params.row.status;
+      
+        return (
+          <Stack mt={1} direction={"row"} spacing={2}>
+            {status != 'OCZEKUJĄCE' ? (
+              <Chip
+                label="Brak akcji"
+                color="default"
+                size="medium"
+              />
+            ) : (
+              <>
+                <Chip
+                  icon={<Done />}
+                  label="Zatwierdź"
+                  color="success"
+                  clickable
+                  onClick={() => handleChangeStatus(params.row.id, "ZATWIERDZONE", params.row.employee, calculateLeaveDays(params.row.dataStart, params.row.dataKoniec))} // implement this
+                />
+                <Chip
+                  icon={<DoNotDisturb />}
+                  label="Odrzuć"
+                  color="error"
+                  clickable
+                  onClick={() => handleChangeStatus(params.row.id, "ODRZUCONE", params.row.employee, calculateLeaveDays(params.row.dataStart, params.row.dataKoniec))} // implement this
+                />
+              </>
+            )}
+          </Stack>
+        );
+      }
+    },
+  ];
 
   if (loading) {
     return (
@@ -113,7 +218,7 @@ const LeavesList = () => {
   return (
     <Box sx={{ width: "100rem", mx: "8rem", mt: "3rem" }}>
       {/* Filters */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" flexWrap="wrap" mb={2} gap={2}>
+      <Box display="flex" mb={2} gap={2} ml={"4rem"}>
         <Box display="flex" gap={2}>
           <TextField
             placeholder="Znajdź pracownika"
@@ -155,76 +260,21 @@ const LeavesList = () => {
       </Box>
 
       {/* Table */}
-      <TableContainer component={Paper} sx={{ mb: 2, minHeight: "300px", minWidth: "1050px" }}>
-        <Table>
-          <TableHead>
-            <TableRow >
-              <TableCell sx={{ fontWeight: "bold" }}>Pracownik</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Okres</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Rodzaj</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Złożono</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Dostępne dni urlopu</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Akcje</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {paginatedLeaves.map((leave) => (
-              <TableRow key={leave.id} hover>
-                <TableCell>
-                  <Box display="flex" alignItems="center">
-                    <Chip avatar={<Avatar>{leave.employee.name.charAt(0)}</Avatar>} label={leave.employee.name + " " + leave.employee.lastname} />
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  {new Date(leave.dataStart).toLocaleDateString()} - {new Date(leave.dataKoniec).toLocaleDateString()}
-                </TableCell>
-                <TableCell>{leave.rodzaj.replace("_", " ")}</TableCell>
-                <TableCell>
-                  <Chip
-                    label={leave.status}
-                    color={leave.status === "OCZEKUJĄCE" ? "warning" : leave.status === "ZATWIERDZONE" ? "success" : "error"}
-                  />
-                </TableCell>
-                <TableCell>{new Date(leave.złożono).toLocaleDateString()}</TableCell>
-                <TableCell>{leave.employee.dostępneDniUrlopu}</TableCell>
-                <TableCell>
-                  {leave.status == "OCZEKUJĄCE" ? (<Box>
-                    <Chip
-                    icon={<Check />}
-                    label="Akceptuj"
-                    clickable
-                    color="success"
-                    onClick={() => handleChangeStatus(leave.id, "ZATWIERDZONE", leave.employee, calculateLeaveDays(leave.dataStart, leave.dataKoniec))}
-                    sx={{ mr: 1 }}
-                  />
-                  <Chip
-                    icon={<DoNotDisturb />}
-                    label="Odrzuć"
-                    clickable
-                    color="error"
-                    onClick={() => handleChangeStatus(leave.id, "ODRZUCONE", leave.employee, calculateLeaveDays(leave.dataStart, leave.dataKoniec))}
-                  />
-                  </Box>) 
-                  :
-                  <Box>
-                  <Chip 
-                  label="Sprawdzone"/>
-                  </Box>} 
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-      <Box sx={{ color: "white", '& .MuiTablePagination-root': { color: "white" }, '& .MuiSvgIcon-root': { color: "white" } }}>
-        <TablePagination
-          component="div"
-          count={filteredRows.length}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={[]} 
+      <Box display="flex" justifyContent="center" width={"92rem"} margin={"auto"}>
+        <DataGrid
+          rows={filteredRows}
+          columns={columns}
+          initialState={{
+            pagination: {
+              paginationModel: {
+                pageSize: 10,
+              },
+            },
+          }}
+          pageSizeOptions={[10]}
+          checkboxSelection
+          disableRowSelectionOnClick
+          sx={{minHeight: "39rem"}}
         />
       </Box>
     </Box>

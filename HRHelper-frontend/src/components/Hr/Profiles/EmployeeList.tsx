@@ -27,6 +27,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { createEmployee, getEmployeeList } from "../../../services/profilesService";
 import SearchIcon from "@mui/icons-material/Search";
 import { EditNote, History } from "@mui/icons-material";
+import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
 
 const EmployeeList = () => {
   const [employees, setEmployees] = useState<EmployeeBasicResponse[]>([]);
@@ -70,10 +71,6 @@ const EmployeeList = () => {
   }, [searchQuery, workTimeFilter, billingTypeFilter, employees]);
   
 
-  const handleChangePage = (event: unknown, newPage: number) => {
-    setPage(newPage);
-  };
-
   const [openEmployeeDialog, setOpenEmployeeDialog] = useState(false);
   const [newEmployeeData, setNewEmployeeData] = useState<EmployeeRequest>({
     name: "",
@@ -101,6 +98,108 @@ const EmployeeList = () => {
     handleCloseEmployeeDialog();
   };
 
+  const columns: GridColDef<(typeof filteredEmployees)[number]>[] = [
+    // { field: 'id', headerName: 'ID', width: 40 },
+    {
+      field: 'fullName',
+      headerName: 'Pracownik',
+      width: 160,
+      valueGetter: (value, row) => `${row.name || ''} ${row.lastname || ''}`,
+    },
+    {
+      field: 'email',
+      headerName: 'Email',
+      type: 'number',
+      width: 140,
+      editable: true,
+    },
+    {
+      field: 'phone',
+      headerName: 'Telefon',
+      type: 'number',
+      width: 110,
+      editable: true,
+    },
+    {
+      field: 'dataZatrudnienia',
+      headerName: 'Data zatrudnienia',
+      type: 'number',
+      width: 140,
+      editable: true,
+      valueGetter: (_, row) => (
+        new Date(row.dataZatrudnienia).toLocaleDateString()
+      )
+    },
+    {
+      field: 'dataZwolnienia',
+      headerName: 'Data zwolnienia',
+      type: 'number',
+      width: 140,
+      editable: true,
+    },
+    {
+      field: 'stawka',
+      headerName: 'Stawka',
+      type: 'number',
+      width: 70,
+      editable: true,
+    },
+    {
+      field: 'wymiarPracy',
+      headerName: 'Wymiar pracy',
+      type: 'number',
+      width: 140,
+      editable: true,
+    },
+    {
+      field: 'rodzajRozliczenia',
+      headerName: 'Rodzaj rozliczenia',
+      type: 'number',
+      width: 140,
+      editable: true,
+    },
+    {
+      field: 'staż',
+      headerName: 'Lata stażu',
+      type: 'number',
+      width: 100,
+      editable: true,
+    },
+    {
+      field: 'dostępneDniUrlopu',
+      headerName: 'Dostępny urlop',
+      type: 'number',
+      width: 120,
+      editable: true,
+    },
+    {
+      field: 'wykorzystaneDniUrlopu',
+      headerName: 'Wykorzystany',
+      type: 'number',
+      width: 120,
+      editable: true,
+    },
+    // {
+    //   field: 'actions',
+    //   headerName: 'Akcje',
+    //   sortable: false,
+    //   renderCell: (params: GridRenderCellParams<any, Date>) => (
+    //     <strong>
+    //       <Button
+    //         variant="contained"
+    //         size="small"
+    //         color="primary"
+    //         style={{ marginLeft: 16}}
+    //         sx={{borderRadius: 4}}
+    //         href={`/employees/${params.row.id}`}
+    //       >
+    //         Detale
+    //       </Button>
+    //     </strong>
+    //   ),
+    // },
+  ];
+
   if (loading) {
     return (
       <Box display="flex" justifyContent="center" mt={4}>
@@ -108,12 +207,6 @@ const EmployeeList = () => {
       </Box>
     );
   }
-
-  // Slice paginated data
-  const paginatedEmployees = filteredEmployees.slice(
-    page * rowsPerPage,
-    page * rowsPerPage + rowsPerPage
-  );
 
   return (
     <Box sx={{width: '100rem', mx: '8rem', mt: '3rem' }}>
@@ -341,77 +434,21 @@ const EmployeeList = () => {
             </DialogActions>
           </Dialog>
       </Box>
-
-      <TableContainer component={Paper}>
-        <Table >
-          <TableHead>
-            <TableRow >
-              <TableCell sx={{ fontWeight: "bold" }}>Pracownik</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Email</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Telefon</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Data zatrudnienia</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Data zwolnienia</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Stawka</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Wymiar pracy</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Rodzaj rozliczenia</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Lata stażu</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Dostępne dni urlopu</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Wykorzystane dni urlopu</TableCell>
-              <TableCell sx={{ fontWeight: "bold" }}>Akcje</TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {paginatedEmployees.map((emp) => (
-              <TableRow key={emp.id} hover>
-                <TableCell>
-                  <Box display="flex" alignItems="center">
-                    {/* <Avatar sx={{ width: 32, height: 32, mr: 1 }}>
-                      {emp.name.charAt(0)}
-                    </Avatar> */}
-                    <Chip 
-                          avatar={<Avatar>{emp.name.charAt(0)}</Avatar>}
-                          label={emp.name + " " + emp.lastname}
-                          />
-                  </Box>
-                </TableCell>
-                <TableCell><Typography variant="body2">{emp.email}</Typography></TableCell>
-                <TableCell><Typography variant="body2">{emp.phone}</Typography></TableCell>
-                <TableCell>{new Date(emp.dataZatrudnienia).toLocaleDateString()}</TableCell>
-                <TableCell>{new Date(emp.dataZwolnienia).toLocaleDateString()}</TableCell>
-                <TableCell>{emp.stawka + " zł/h"}</TableCell>
-                <TableCell>{emp.wymiarPracy}</TableCell>
-                <TableCell>{emp.rodzajRozliczenia}</TableCell>
-                <TableCell>{emp.staż}</TableCell>
-                <TableCell>{emp.dostępneDniUrlopu}</TableCell>
-                <TableCell>{emp.wykorzystaneDniUrlopu}</TableCell>
-                <TableCell>
-                  <Chip
-                    icon={<EditNote />}
-                    label={"Edytuj"}
-                    clickable
-                  />
-                  {/* <Chip
-                    icon={<History />}
-                    label={"Historia"}
-                    clickable
-                  /> */}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-
-        
-      </TableContainer>
-      <Box sx={{ color: "white", '& .MuiTablePagination-root': { color: "white" }, '& .MuiSvgIcon-root': { color: "white" } }}>
-        <TablePagination
-          component="div"
-          count={filteredEmployees.length}
-          page={page}
-          onPageChange={handleChangePage}
-          rowsPerPage={rowsPerPage}
-          rowsPerPageOptions={[]} // Disable page size selector
+      <Box>
+        <DataGrid
+          rows={filteredEmployees}
+          columns={columns}
+          initialState={{
+            pagination: {
+              paginationModel: {
+                pageSize: 10,
+              },
+            },
+          }}
+          pageSizeOptions={[10]}
+          checkboxSelection
+          disableRowSelectionOnClick
+          sx={{minHeight: "39rem"}}
         />
       </Box>
     </Box>
