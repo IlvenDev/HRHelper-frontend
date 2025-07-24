@@ -89,6 +89,7 @@ const AttendanceList = () => {
       field: 'employee',
       headerName: 'Pracownik',
       width: 160,
+      editable: false,
       valueGetter: (_, row) => {
         return `${row.employee.name || ''} ${row.employee.lastname || ''}`;
       },
@@ -96,30 +97,56 @@ const AttendanceList = () => {
     { 
       field: 'date',
       headerName: 'Data',
-      type: 'number',
+      type: 'date',
       width: 180,
-      editable: true,
+      editable: false,
+      filterable: false,
+      valueGetter: (_, row) => {
+        return new Date(row.date)
+      },
+      valueFormatter: (value) => {
+        return dayjs(value).format('DD/MM/YYYY')
+      }
     },
     {
-      field: 'startTime',
-      headerName: 'Rozpoczęcie',
-      type: 'number',
-      width: 110,
-      editable: true,
+      field: 'startTime', 
+      headerName: 'Wejście',
+      type: 'dateTime',
+      width: 120,
+      editable: false,
+      filterable: false,
+      valueGetter: (_, row) => {
+        const [hours, minutes, seconds] = row.startTime.split(":").map(Number);
+        return new Date(0, 0, 0, hours, minutes, seconds).getTime(); // returns sortable number
+      },
+      valueFormatter: (value) => {
+        const date = new Date(value);
+        return date.toTimeString().substring(0, 8); // "HH:mm:ss"
+      },
     },
     {
       field: 'endTime',
       headerName: 'Zakończenie',
-      type: 'number',
+      type: 'dateTime',
       width: 190,
-      editable: true,
+      editable: false,
+      filterable: false,
+      valueGetter: (_, row) => {
+        if (!row.endTime) return '';
+        const [hours, minutes, seconds] = row.endTime?.split(":").map(Number);
+        return new Date(0, 0, 0, hours, minutes, seconds).getTime(); // returns sortable number
+      },
+      valueFormatter: (value) => {
+        const date = new Date(value);
+        return date.toTimeString().substring(0, 8); // "HH:mm:ss"
+      },
     },
     {
       field: 'breakTaken',
       headerName: 'Wzięto przerwę',
       type: 'number',
       width: 160,
-      editable: true,
+      editable: false,
       sortable: false,
       valueGetter: (_, row) => {
         return `${row.breakTaken ? "Tak" : "Nie"}`;

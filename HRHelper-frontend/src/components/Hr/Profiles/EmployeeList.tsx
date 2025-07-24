@@ -28,6 +28,7 @@ import { createEmployee, getEmployeeList } from "../../../services/profilesServi
 import SearchIcon from "@mui/icons-material/Search";
 import { EditNote, History } from "@mui/icons-material";
 import { DataGrid, type GridColDef, type GridRenderCellParams } from '@mui/x-data-grid';
+import dayjs from "dayjs";
 
 const EmployeeList = () => {
   const [employees, setEmployees] = useState<EmployeeBasicResponse[]>([]);
@@ -36,9 +37,6 @@ const EmployeeList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [workTimeFilter, setWorkTimeFilter] = useState("all");
   const [billingTypeFilter, setBillingTypeFilter] = useState("all");
-
-  const [page, setPage] = useState(0);
-  const rowsPerPage = 10;
 
   async function loadEmployees() {
     const employeeList: EmployeeBasicResponse[] = await getEmployeeList();
@@ -67,7 +65,6 @@ const EmployeeList = () => {
       );
   
     setFilteredEmployees(filtered);
-    setPage(0); // reset to first page on filter change
   }, [searchQuery, workTimeFilter, billingTypeFilter, employees]);
   
 
@@ -109,52 +106,58 @@ const EmployeeList = () => {
     {
       field: 'email',
       headerName: 'Email',
-      type: 'number',
+      type: 'string',
       width: 140,
       editable: true,
     },
     {
       field: 'phone',
       headerName: 'Telefon',
-      type: 'number',
+      type: 'string',
       width: 110,
       editable: true,
     },
     {
       field: 'dataZatrudnienia',
       headerName: 'Data zatrudnienia',
-      type: 'number',
+      type: 'string',
       width: 140,
       editable: true,
       valueGetter: (_, row) => (
-        new Date(row.dataZatrudnienia).toLocaleDateString()
+        dayjs(row.dataZatrudnienia).format("DD MMMM YYYY")
       )
     },
     {
       field: 'dataZwolnienia',
       headerName: 'Data zwolnienia',
-      type: 'number',
+      type: 'string',
       width: 140,
       editable: true,
+      valueGetter: (_, row) => (
+        row.dataZwolnienia === null ? "Brak" : dayjs(row.dataZwolnienia).format("DD MMMM YYYY")
+      )
     },
     {
       field: 'stawka',
       headerName: 'Stawka',
       type: 'number',
-      width: 70,
+      width: 100,
       editable: true,
+      valueGetter: (_, row) => (
+        `${row.stawka} zł/godz`
+      )
     },
     {
       field: 'wymiarPracy',
       headerName: 'Wymiar pracy',
-      type: 'number',
+      type: 'string',
       width: 140,
       editable: true,
     },
     {
       field: 'rodzajRozliczenia',
       headerName: 'Rodzaj rozliczenia',
-      type: 'number',
+      type: 'string',
       width: 140,
       editable: true,
     },
@@ -171,6 +174,9 @@ const EmployeeList = () => {
       type: 'number',
       width: 120,
       editable: true,
+      valueGetter: (_, row) => (
+        `${row.dostępneDniUrlopu} dni`
+      )
     },
     {
       field: 'wykorzystaneDniUrlopu',
@@ -178,6 +184,9 @@ const EmployeeList = () => {
       type: 'number',
       width: 120,
       editable: true,
+      valueGetter: (_, row) => (
+        `${row.wykorzystaneDniUrlopu} dni`
+      )
     },
     // {
     //   field: 'actions',

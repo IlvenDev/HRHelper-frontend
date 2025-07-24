@@ -38,6 +38,20 @@ const LeavesList = () => {
   const [endDate, setEndDate] = useState<Dayjs | null>(dayjs().endOf("month"));
   const [rodzajFilter, setRodzajFilter] = useState("all");
 
+  const leaveTypes = {
+    'WYPOCZYNKOWY' : 'Urlop wypoczynkowy',
+    'BEZPŁATNY' : 'Urlop bezpłatny',
+    'OKOLICZNOŚCIOWY': 'Urlop okolicznościowy',
+    'MACIERZYŃSKI' : 'Urlop macierzyński',
+    'WYCHOWAWCZY': 'Urlop wychowawczy',
+    'SZKOLENIOWY' : 'Urlop szkoleniowy',
+    'SIŁA_WYŻSZA' : 'Siła wyższa',
+    'NA_POSZUKIWANIE_PRACY' : 'Poszukiwanie pracy',
+    'ODDANIE_KRWI' : 'Oddanie krwi',
+    'OPIEKUŃCZY' : 'Opiekuńczy',
+    'CHOROBOWY' : 'Urlop chorobowy'
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
@@ -100,6 +114,7 @@ const LeavesList = () => {
       field: 'employee',
       headerName: 'Pracownik',
       width: 160,
+      editable: false,
       valueGetter: (_, row) => {
         return `${row.employee.name || ''} ${row.employee.lastname || ''}`;
       },
@@ -107,36 +122,49 @@ const LeavesList = () => {
     {
       field: 'dataStart',
       headerName: 'Okres',
-      type: 'number',
-      width: 180,
-      editable: true,
+      type: 'string',
+      width: 240,
+      editable: false,
       valueGetter: (_, row) => {
-        return `${new Date(row.dataStart).toLocaleDateString() || ' '} - ${new Date(row.dataKoniec).toLocaleDateString() || ''}`
+        return `${dayjs(row.dataStart).format('DD/MM/YYYY') || ' '} - ${dayjs(row.dataKoniec).format('DD/MM/YYYY') || ''}`
       }
     },
     {
       field: 'czasTrwania',
       headerName: 'Czas trwania',
+      type: 'number',
       width: 130,
+      editable: false,
       valueGetter: (_, row) => {
         const { dataStart, dataKoniec } = row; 
-        if (!dataStart || !dataKoniec) return '-';
-        return `${calculateLeaveDays(dataStart, dataKoniec)} dni`; // Return a string or number
+        if (!dataStart || !dataKoniec) return null;
+        return calculateLeaveDays(dataStart, dataKoniec);
       },
-    },
+      valueFormatter: (value? : number) => {
+        return `${value} dni`
+      }
+      
+    },    
     {
       field: 'rodzaj',
       headerName: 'Rodzaj',
       type: 'number',
       width: 190,
-      editable: true,
+      editable: false,
+      sortable: false,
+      filterable: false,
+      valueFormatter: (value) => {
+        return leaveTypes[value];
+      }
     },
     {
       field: 'status',
       headerName: 'Status',
       type: 'number',
       width: 160,
-      editable: true,
+      editable: false,
+      sortable: false,
+      filterable: false,
       renderCell: (params: GridRenderCellParams<any, Date>) => {
         const status = params.row.status;
 
@@ -152,19 +180,28 @@ const LeavesList = () => {
     {
       field: 'złożono',
       headerName: 'Złożono',
-      type: 'number',
+      type: 'date',
       width: 140,
-      editable: true,
+      editable: false,
+      valueGetter: (_, row) => {
+        return new Date(row.złożono)
+      },
+      valueFormatter: (value) => {
+        return dayjs(value).format('DD/MM/YYYY')
+      }
     },
     {
       field: 'dostępneDniUrlopu',
-      headerName: 'Dostępne dni urlopu',
+      headerName: 'Dostępne dni',
       type: 'number',
-      width: 200,
-      editable: true,
+      width: 140,
+      editable: false,
       valueGetter: (_, row) => {
-        return `${row.employee.dostępneDniUrlopu || ''}`;
+        return row.employee.dostępneDniUrlopu
       },
+      valueFormatter: (value) => {
+        return `${value} dni`
+      }
     },
     {
       field: 'actions',
@@ -172,6 +209,7 @@ const LeavesList = () => {
       width: 240,
       sortable: false,
       filterable: false,
+      editable: false,
       renderCell: (params: GridRenderCellParams<any, Date>) => {
         const status = params.row.status;
       

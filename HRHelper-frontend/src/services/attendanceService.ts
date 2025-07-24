@@ -63,8 +63,8 @@ export const getWorkedHoursInMonth = async (year: number, month: number): Promis
     return response.data;
     };
 
-export const getTodayAttendance = async (): Promise<AttendanceTimeResponse[]> => {
-    const resp = await api.get<AttendanceTimeResponse[]>('/attendance/today');
+export const getTodayAttendance = async (): Promise<EmployeeBasicResponse[]> => {
+    const resp = await api.get<EmployeeBasicResponse[]>('/attendance/today');
     return resp.data;
     };
     

@@ -40,7 +40,7 @@ import type { LeaveResponse } from "../types/leavesDTO";
 import { DatePicker } from "@mui/x-date-pickers";
 import { downloadMonthlyPersonalSummaryPdf, downloadMonthlySummaryPdf, generateAllMonthlyReportsForEmployees, generateCompanyDetailedReportPdf } from "../raporting/raportingService";
 import { getEmployeeList } from "../services/profilesService";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { BarChart, useDrawingArea } from "@mui/x-charts";
 
 type HoursSummary = {
@@ -64,9 +64,11 @@ type HoursSummary = {
 const LEAVES_PER_PAGE = 5;
 
 const Dashboard = () => {
+  const navigate = useNavigate()
+
   const [loading, setLoading] = useState(true);
 
-  const [presentEmployees, setPresentEmployees] = useState<AttendanceTimeResponse[]>([]);
+  const [presentEmployees, setPresentEmployees] = useState<EmployeeBasicResponse[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveResponse[]>([]);
 
   const [absences, setAbsences] = useState<EmployeeBasicResponse[]>([]);
@@ -358,7 +360,7 @@ const Dashboard = () => {
                             </Avatar>
                           </Badge>
                           <Typography ml={2} variant="h6">
-                            {attendance.employee.name + " " + attendance.employee.lastname}
+                            {attendance.name + " " + attendance.lastname}
                           </Typography>
                         </Box>
                       ))}
@@ -428,7 +430,8 @@ const Dashboard = () => {
                     layout="horizontal"
                     yAxis={[{ scaleType: 'band', dataKey: 'label' }]} // Labels on Y-axis now
                     xAxis={[{ scaleType: 'linear' }]}                 // Values on X-axis
-                    series={[{ dataKey: 'value', label: 'Ilość' }]}
+                    grid={{vertical: true}}
+                    series={[{ dataKey: 'value', label: 'Godziny' }]}
                     dataset={barChartData}
                     hideLegend={true}
                     width={800}
@@ -531,7 +534,19 @@ const Dashboard = () => {
               </Grid>
               <Grid size={12}>
           <Paper sx={{minHeight: 280, borderRadius: 4 }} elevation={2}>
-            <Typography variant="h6" align="left" sx={{ml: 2, pt: 1, mb: 1}}>Wnioski urlopowe wymagające uwagi</Typography>
+            <Box display={"flex"} justifyContent={"space-between"} alignItems={"center"}>
+              <Typography variant="h6" align="left" sx={{ml: 2, pt: 1, mb: 1}}>Wnioski urlopowe wymagające uwagi</Typography>
+              <Box>
+              <Button 
+                variant="contained"
+                size="small"
+                component={Link}
+                to={"/leaves"}
+                sx={{mr: 2}}>
+               Przejdź do urlopów
+              </Button>
+              </Box>    
+            </Box>
             <Divider sx={{ mb: 2 }} />
             {leaveRequests.length === 0 ? (
               <Typography variant="body2">Brak oczekujących wniosków.</Typography>
